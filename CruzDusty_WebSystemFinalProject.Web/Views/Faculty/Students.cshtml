@@ -1,0 +1,199 @@
+@{
+    Layout = "_AppShell";
+    ViewData["Title"] = "Students";
+    ViewData["Area"] = "Faculty";
+    ViewData["ActiveNav"] = "students";
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Students</h1>
+        <p class="page-sub">Create, search and manage student records and their login accounts.</p>
+    </div>
+    <div class="page-head-actions">
+        <button type="button" class="btn btn-primary" id="btn-add-student">
+            <i class="bi bi-person-plus-fill me-2" aria-hidden="true"></i>Add Student
+        </button>
+    </div>
+</div>
+
+<section class="panel" aria-label="Student list">
+    <div class="table-toolbar">
+        <div class="search-box">
+            <i class="bi bi-search" aria-hidden="true"></i>
+            <label class="visually-hidden" for="student-search">Search students by name or student number</label>
+            <input type="search" class="form-control" id="student-search"
+                   placeholder="Search by name or student number" autocomplete="off" maxlength="60" />
+        </div>
+        <div class="toolbar-meta" id="students-count" aria-live="polite"></div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table data-table align-middle" id="students-table">
+            <caption class="visually-hidden">List of students</caption>
+            <thead>
+                <tr>
+                    <th scope="col" data-sort="studentNumber">
+                        <button type="button" class="th-sort">Student No.<i class="bi bi-arrow-down-up sort-icon" aria-hidden="true"></i></button>
+                    </th>
+                    <th scope="col" data-sort="fullName">
+                        <button type="button" class="th-sort">Name<i class="bi bi-arrow-down-up sort-icon" aria-hidden="true"></i></button>
+                    </th>
+                    <th scope="col" data-sort="course">
+                        <button type="button" class="th-sort">Course<i class="bi bi-arrow-down-up sort-icon" aria-hidden="true"></i></button>
+                    </th>
+                    <th scope="col" data-sort="yearLevel">
+                        <button type="button" class="th-sort">Year<i class="bi bi-arrow-down-up sort-icon" aria-hidden="true"></i></button>
+                    </th>
+                    <th scope="col" data-sort="username">
+                        <button type="button" class="th-sort">Username<i class="bi bi-arrow-down-up sort-icon" aria-hidden="true"></i></button>
+                    </th>
+                    <th scope="col" class="col-actions">Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div class="table-footer">
+        <div class="table-info" id="students-info" aria-live="polite"></div>
+        <nav aria-label="Students pagination">
+            <ul class="pagination pagination-sm mb-0" id="students-pager"></ul>
+        </nav>
+    </div>
+</section>
+
+<!-- Create / Edit student -->
+<div class="modal fade" id="student-modal" tabindex="-1" aria-labelledby="student-modal-title" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <form class="modal-content" id="student-form" novalidate autocomplete="off">
+            <div class="modal-header">
+                <h2 class="modal-title" id="student-modal-title">Add Student</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-alert" id="student-form-alert" role="alert" hidden></div>
+
+                <div class="row g-3">
+                    <div class="col-12">
+                        <div class="form-section-title">Student information</div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label" for="student-number">Student number <span class="req" aria-hidden="true">*</span></label>
+                        <input type="text" class="form-control" id="student-number" name="studentNumber"
+                               maxlength="20" required placeholder="2026-0001" />
+                        <div class="invalid-feedback" data-error-for="studentNumber"></div>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label" for="student-email">Email</label>
+                        <input type="email" class="form-control" id="student-email" name="email"
+                               maxlength="150" placeholder="name&#64;example.com" />
+                        <div class="invalid-feedback" data-error-for="email"></div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <label class="form-label" for="student-first-name">First name <span class="req" aria-hidden="true">*</span></label>
+                        <input type="text" class="form-control" id="student-first-name" name="firstName" maxlength="50" required />
+                        <div class="invalid-feedback" data-error-for="firstName"></div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="student-middle-name">Middle name</label>
+                        <input type="text" class="form-control" id="student-middle-name" name="middleName" maxlength="50" />
+                        <div class="invalid-feedback" data-error-for="middleName"></div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="student-last-name">Last name <span class="req" aria-hidden="true">*</span></label>
+                        <input type="text" class="form-control" id="student-last-name" name="lastName" maxlength="50" required />
+                        <div class="invalid-feedback" data-error-for="lastName"></div>
+                    </div>
+
+                    <div class="col-md-8">
+                        <label class="form-label" for="student-course">Course <span class="req" aria-hidden="true">*</span></label>
+                        <input type="text" class="form-control" id="student-course" name="course" maxlength="100" required
+                               list="course-options" placeholder="BS Information Technology" />
+                        <datalist id="course-options">
+                            <option value="BS Information Technology"></option>
+                            <option value="BS Computer Science"></option>
+                            <option value="BS Business Administration"></option>
+                            <option value="BS Psychology"></option>
+                            <option value="AB Communication"></option>
+                        </datalist>
+                        <div class="invalid-feedback" data-error-for="course"></div>
+                    </div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="student-year-level">Year level <span class="req" aria-hidden="true">*</span></label>
+                        <select class="form-select" id="student-year-level" name="yearLevel" required>
+                            <option value="">Select year</option>
+                            <option value="1">1st Year</option>
+                            <option value="2">2nd Year</option>
+                            <option value="3">3rd Year</option>
+                            <option value="4">4th Year</option>
+                            <option value="5">5th Year</option>
+                            <option value="6">6th Year</option>
+                        </select>
+                        <div class="invalid-feedback" data-error-for="yearLevel"></div>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="form-section-title">Login account</div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label" for="student-username">
+                            Username <span class="req" id="student-username-req" aria-hidden="true">*</span>
+                        </label>
+                        <input type="text" class="form-control" id="student-username" name="username"
+                               maxlength="50" autocapitalize="none" spellcheck="false"
+                               aria-describedby="student-username-help" />
+                        <div class="invalid-feedback" data-error-for="username"></div>
+                        <div class="form-hint" id="student-username-help">3 to 50 characters: letters, numbers, dot, underscore or hyphen.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="student-password">
+                            <span id="student-password-label">Password</span>
+                            <span class="req" id="student-password-req" aria-hidden="true">*</span>
+                        </label>
+                        <input type="password" class="form-control" id="student-password" name="password"
+                               maxlength="100" autocomplete="new-password"
+                               aria-describedby="student-password-help" />
+                        <div class="invalid-feedback" data-error-for="password"></div>
+                        <div class="form-hint" id="student-password-help">At least 8 characters.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="student-save">
+                    <i class="bi bi-check2 me-2" aria-hidden="true"></i>Save Student
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- View student -->
+<div class="modal fade" id="student-view-modal" tabindex="-1" aria-labelledby="student-view-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="student-view-title">Student Details</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <dl class="detail-list" id="student-view-body"></dl>
+            </div>
+            <div class="modal-footer">
+                <a class="btn btn-ghost" id="student-view-grades" href="/Faculty/Grades">
+                    <i class="bi bi-journal-check me-2" aria-hidden="true"></i>View grades
+                </a>
+                <button type="button" class="btn btn-primary" id="student-view-edit">
+                    <i class="bi bi-pencil-square me-2" aria-hidden="true"></i>Edit
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/faculty-students.js" asp-append-version="true"></script>
+}

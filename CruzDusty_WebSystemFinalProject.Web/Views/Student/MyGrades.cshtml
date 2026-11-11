@@ -1,0 +1,130 @@
+@{
+    Layout = "_AppShell";
+    ViewData["Title"] = "My Grades";
+    ViewData["Area"] = "Student";
+    ViewData["ActiveNav"] = "mygrades";
+}
+<div class="print-header" aria-hidden="true">
+    <img src="~/images/logo.png" alt="" class="print-logo" width="72" height="72" />
+    <div class="print-header-text">
+        <div class="print-school">UST Angelicum College</div>
+        <div class="print-system">Student Grade Management System</div>
+        <div class="print-motto">Caritas &bull; Justitia &bull; Fortitudo</div>
+    </div>
+    <div class="print-meta">
+        <div class="print-doc-title">Student Grade Report</div>
+        <div>Student: <span id="print-name"></span></div>
+        <div>Student No.: <span id="print-number"></span></div>
+        <div>Term: <span id="print-term"></span></div>
+        <div>Printed: <span id="print-date"></span></div>
+    </div>
+</div>
+
+<section class="welcome-banner" aria-label="Student profile">
+    <div class="welcome-avatar" id="welcome-initials" aria-hidden="true"></div>
+    <div class="welcome-text">
+        <p class="welcome-eyebrow">Welcome back</p>
+        <h1 class="welcome-name" id="welcome-name"><span class="skeleton skeleton-text skeleton-w-50"></span></h1>
+        <p class="welcome-meta">
+            <span class="welcome-chip" id="welcome-number"></span>
+            <span class="welcome-chip" id="welcome-course"></span>
+        </p>
+    </div>
+    <div class="welcome-actions no-print">
+        <button type="button" class="btn btn-gold" id="btn-print">
+            <i class="bi bi-printer-fill me-2" aria-hidden="true"></i>Print / Save as PDF
+        </button>
+    </div>
+</section>
+
+<section class="row g-3 mb-4" aria-label="Grade summary">
+    <div class="col-6 col-xl-3">
+        <div class="stat-card stagger-item" style="--i:0">
+            <div class="stat-icon stat-icon-blue" aria-hidden="true"><i class="bi bi-award-fill"></i></div>
+            <div class="stat-body">
+                <div class="stat-label">General Weighted Average</div>
+                <div class="stat-value" id="sum-gwa"><span class="skeleton skeleton-text"></span></div>
+                <div class="stat-hint" id="sum-gwa-hint">Weighted by units</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card stagger-item" style="--i:1">
+            <div class="stat-icon stat-icon-success" aria-hidden="true"><i class="bi bi-check-circle-fill"></i></div>
+            <div class="stat-body">
+                <div class="stat-label">Subjects Passed</div>
+                <div class="stat-value" id="sum-passed"><span class="skeleton skeleton-text"></span></div>
+                <div class="stat-hint">Final grade 75 or higher</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card stagger-item" style="--i:2">
+            <div class="stat-icon stat-icon-red" aria-hidden="true"><i class="bi bi-x-circle-fill"></i></div>
+            <div class="stat-body">
+                <div class="stat-label">Subjects Failed</div>
+                <div class="stat-value" id="sum-failed"><span class="skeleton skeleton-text"></span></div>
+                <div class="stat-hint">Final grade below 75</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="stat-card stagger-item" style="--i:3">
+            <div class="stat-icon stat-icon-sun" aria-hidden="true"><i class="bi bi-hourglass-split"></i></div>
+            <div class="stat-body">
+                <div class="stat-label">Incomplete</div>
+                <div class="stat-value" id="sum-incomplete"><span class="skeleton skeleton-text"></span></div>
+                <div class="stat-hint">Missing one or more scores</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="panel" aria-labelledby="my-grades-title">
+    <div class="panel-head">
+        <h2 class="panel-title" id="my-grades-title">Grade Records</h2>
+        <span class="panel-note" id="my-grades-count" aria-live="polite"></span>
+    </div>
+
+    <ul class="term-tabs no-print" id="term-tabs" role="tablist" aria-label="Filter by school year and semester"></ul>
+
+    <div class="grades-desktop">
+        <div class="table-responsive">
+            <table class="table data-table align-middle" id="my-grades-table">
+                <caption class="visually-hidden">My grade records</caption>
+                <thead>
+                    <tr>
+                        <th scope="col">Code</th>
+                        <th scope="col">Subject</th>
+                        <th scope="col" class="col-num">Units</th>
+                        <th scope="col">School Year</th>
+                        <th scope="col">Semester</th>
+                        <th scope="col" class="col-num">Prelim</th>
+                        <th scope="col" class="col-num">Midterm</th>
+                        <th scope="col" class="col-num">Finals</th>
+                        <th scope="col" class="col-num">Final Grade</th>
+                        <th scope="col">Remarks</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="grades-mobile" id="my-grades-cards"></div>
+
+    <div class="empty-state" id="my-grades-empty" hidden>
+        <img src="~/images/logo.png" alt="" class="empty-logo" width="72" height="72" />
+        <p class="empty-title">No grades to show yet</p>
+        <p class="empty-text">Your grades will appear here once your faculty has encoded them.</p>
+    </div>
+
+    <p class="panel-footnote">
+        Final grade = Prelim 30% + Midterm 30% + Finals 40%. The passing grade is 75.
+        Final grades and remarks are computed by the server.
+    </p>
+</section>
+
+@section Scripts {
+    <script src="~/js/student-grades.js" asp-append-version="true"></script>
+}

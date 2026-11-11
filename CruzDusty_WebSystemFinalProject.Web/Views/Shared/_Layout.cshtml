@@ -1,0 +1,78 @@
+﻿@inject Microsoft.Extensions.Configuration.IConfiguration Configuration
+@{
+    var apiBaseUrl = Configuration["ApiSettings:BaseUrl"] ?? "https://localhost:7001";
+    var bodyClass = ViewData["BodyClass"] as string ?? "";
+}
+<!DOCTYPE html>
+<html lang="en" data-theme="light" data-bs-theme="light">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="api-base-url" content="@apiBaseUrl" />
+    <title>@ViewData["Title"] | UST Angelicum College</title>
+    <link rel="icon" type="image/png" href="~/images/logo.png" />
+    <script>
+            (function() {
+                try {
+                    var theme = localStorage.getItem('ac-theme');
+                    if (theme !== 'dark' && theme !== 'light') {
+                        theme = 'light';
+                    }
+                    document.documentElement.setAttribute('data-theme', theme);
+                    document.documentElement.setAttribute('data-bs-theme', theme);
+                    if (sessionStorage.getItem('ac-splash-shown') === '1') {
+                        document.documentElement.classList.add('splash-skip');
+                    }
+                } catch (e) {
+                    document.documentElement.classList.add('splash-skip');
+                }
+            })();
+    </script>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/css/animations.css" asp-append-version="true" />
+</head>
+<body class="@bodyClass">
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+
+    <div class="splash" id="splash" role="status" aria-label="Loading">
+        <div class="splash-inner">
+            <img src="~/images/logo.png" alt="" class="splash-logo" width="120" height="120" />
+            <div class="splash-title">UST Angelicum College</div>
+            <div class="splash-sub">Student Grade Management System</div>
+            <div class="splash-bar"><span></span></div>
+        </div>
+    </div>
+
+    @RenderBody()
+
+    <div class="toast-region" id="toast-region" aria-live="polite" aria-relevant="additions"></div>
+
+    <div class="modal fade" id="confirm-modal" tabindex="-1" aria-labelledby="confirm-modal-title" aria-describedby="confirm-modal-message" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered confirm-dialog">
+            <div class="modal-content">
+                <div class="modal-body text-center">
+                    <div class="confirm-icon" id="confirm-modal-icon" aria-hidden="true">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                    </div>
+                    <h2 class="modal-title confirm-title" id="confirm-modal-title">Are you sure?</h2>
+                    <p class="confirm-message" id="confirm-modal-message"></p>
+                </div>
+                <div class="modal-footer confirm-footer">
+                    <button type="button" class="btn btn-ghost" id="confirm-modal-cancel" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-danger" id="confirm-modal-ok">Delete</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/ui.js" asp-append-version="true"></script>
+    <script src="~/js/api.js" asp-append-version="true"></script>
+    <script src="~/js/auth.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

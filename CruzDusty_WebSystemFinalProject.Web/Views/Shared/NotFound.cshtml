@@ -1,0 +1,26 @@
+@{
+    var statusCode = ViewData["StatusCode"] as string ?? "404";
+    var statusHeading = ViewData["StatusHeading"] as string ?? "Page Not Found";
+    var statusMessage = ViewData["StatusMessage"] as string
+        ?? "The page you are looking for does not exist or has been moved.";
+
+    ViewData["Title"] = statusHeading;
+    ViewData["BodyClass"] = "status-body";
+}
+<main class="status-page page-enter" id="main-content">
+    <div class="status-card">
+        <img src="~/images/logo.png" alt="UST Angelicum College seal" class="status-logo" width="96" height="96" />
+        <div class="status-code">@statusCode</div>
+        <h1 class="status-heading">@statusHeading</h1>
+        <p class="status-text">@statusMessage</p>
+        <div class="status-actions">
+            <a class="btn btn-primary" href="/" data-home-link>
+                <i class="bi bi-house-door-fill me-2" aria-hidden="true"></i>Go to my home page
+            </a>
+            <a class="btn btn-outline-primary" href="/Account/Login">
+                <i class="bi bi-box-arrow-in-right me-2" aria-hidden="true"></i>Sign in
+            </a>
+        </div>
+        <p class="status-foot">&copy; 2026 UST Angelicum College &bull; Caritas &bull; Justitia &bull; Fortitudo</p>
+    </div>
+</main>

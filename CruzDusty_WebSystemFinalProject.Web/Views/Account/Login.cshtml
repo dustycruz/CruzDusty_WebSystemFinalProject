@@ -1,0 +1,70 @@
+@{
+    ViewData["Title"] = "Sign In";
+    ViewData["BodyClass"] = "login-body";
+}
+<div class="login-split" data-page="login">
+
+    <section class="login-hero" aria-label="UST Angelicum College">
+        <div class="login-hero-inner">
+            <img src="~/images/logo.png" alt="UST Angelicum College seal" class="login-logo float-gentle" width="220" height="220" />
+            <h1 class="brand-title-xl">UST Angelicum College</h1>
+            <p class="brand-sub-xl">Student Grade Management System</p>
+            <div class="gold-divider" aria-hidden="true"></div>
+            <p class="motto">Caritas &bull; Justitia &bull; Fortitudo</p>
+            <p class="hero-est">Quezon City &bull; Est. 1972</p>
+        </div>
+    </section>
+
+    <main class="login-panel" id="main-content">
+        <button type="button" class="icon-btn theme-fab" data-theme-toggle aria-label="Switch to dark mode" title="Toggle light or dark mode">
+            <i class="bi bi-moon-stars-fill" aria-hidden="true"></i>
+        </button>
+
+        <div class="login-card-frame shimmer-border page-enter">
+            <div class="login-card">
+                <img src="~/images/logo.png" alt="" class="login-card-logo" width="72" height="72" />
+                <h2 class="login-heading">Welcome back</h2>
+                <p class="login-lead">Sign in with your school account to continue.</p>
+
+                <div class="form-alert" id="login-alert" role="alert" hidden></div>
+
+                <form id="login-form" novalidate autocomplete="on">
+                    <div class="form-floating mb-3">
+                        <input type="text" class="form-control" id="login-username" name="username"
+                               placeholder="Username" autocomplete="username" maxlength="50" required
+                               autocapitalize="none" spellcheck="false"
+                               aria-describedby="login-username-error" />
+                        <label for="login-username">Username</label>
+                        <div class="invalid-feedback" id="login-username-error" data-error-for="username"></div>
+                    </div>
+
+                    <div class="form-floating mb-3 password-field">
+                        <input type="password" class="form-control" id="login-password" name="password"
+                               placeholder="Password" autocomplete="current-password" maxlength="100" required
+                               aria-describedby="login-password-error" />
+                        <label for="login-password">Password</label>
+                        <button type="button" class="password-toggle" id="toggle-password"
+                                aria-label="Show password" aria-pressed="false" title="Show or hide password">
+                            <i class="bi bi-eye-fill" aria-hidden="true"></i>
+                        </button>
+                        <div class="invalid-feedback" id="login-password-error" data-error-for="password"></div>
+                    </div>
+
+                    <div class="form-check mb-4">
+                        <input class="form-check-input" type="checkbox" id="remember-username" />
+                        <label class="form-check-label" for="remember-username">Remember username</label>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-lg w-100" id="login-submit">
+                        <i class="bi bi-box-arrow-in-right me-2" aria-hidden="true"></i>Sign In
+                    </button>
+                </form>
+
+                <p class="login-foot">
+                    &copy; 2026 UST Angelicum College<br />
+                    Caritas &bull; Justitia &bull; Fortitudo
+                </p>
+            </div>
+        </div>
+    </main>
+</div>

@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="CruzDusty_WebSystemFinalProject.Api/CruzDusty_WebSystemFinalProject.Api.csproj" />
+  <Project Path="CruzDusty_WebSystemFinalProject.Web/CruzDusty_WebSystemFinalProject.Web.csproj" />
+</Solution>

@@ -1,0 +1,24 @@
+@{
+    ViewData["Title"] = "Access Denied";
+    ViewData["BodyClass"] = "status-body";
+}
+<main class="status-page page-enter" id="main-content">
+    <div class="status-card">
+        <img src="~/images/logo.png" alt="UST Angelicum College seal" class="status-logo" width="96" height="96" />
+        <div class="status-code status-code-danger">403</div>
+        <h1 class="status-heading">Access Denied</h1>
+        <p class="status-text">
+            You do not have permission to view this page. If you believe this is a mistake,
+            please contact your faculty adviser or sign in with a different account.
+        </p>
+        <div class="status-actions">
+            <a class="btn btn-primary" href="/" data-home-link>
+                <i class="bi bi-house-door-fill me-2" aria-hidden="true"></i>Go to my home page
+            </a>
+            <button type="button" class="btn btn-outline-primary" data-logout>
+                <i class="bi bi-box-arrow-in-right me-2" aria-hidden="true"></i>Sign in with another account
+            </button>
+        </div>
+        <p class="status-foot">&copy; 2026 UST Angelicum College &bull; Caritas &bull; Justitia &bull; Fortitudo</p>
+    </div>
+</main>

@@ -1,0 +1,239 @@
+@{
+    Layout = "_AppShell";
+    ViewData["Title"] = "Grade Records";
+    ViewData["Area"] = "Faculty";
+    ViewData["ActiveNav"] = "grades";
+}
+<div class="page-head">
+    <div>
+        <h1 class="page-title">Grade Records</h1>
+        <p class="page-sub">Encode Prelim, Midterm and Finals scores. The final grade and remarks are computed by the server.</p>
+    </div>
+    <div class="page-head-actions">
+        <button type="button" class="btn btn-primary" id="btn-add-grade">
+            <i class="bi bi-plus-lg me-2" aria-hidden="true"></i>Add Grade Record
+        </button>
+    </div>
+</div>
+
+<section class="panel filter-panel" aria-label="Filters">
+    <div class="row g-3 align-items-end">
+        <div class="col-12 col-sm-6 col-xl-3">
+            <label class="form-label" for="filter-student">Student</label>
+            <select class="form-select" id="filter-student">
+                <option value="">All students</option>
+            </select>
+        </div>
+        <div class="col-12 col-sm-6 col-xl-3">
+            <label class="form-label" for="filter-subject">Subject</label>
+            <select class="form-select" id="filter-subject">
+                <option value="">All subjects</option>
+            </select>
+        </div>
+        <div class="col-6 col-sm-4 col-xl-2">
+            <label class="form-label" for="filter-school-year">School year</label>
+            <select class="form-select" id="filter-school-year">
+                <option value="">All years</option>
+            </select>
+        </div>
+        <div class="col-6 col-sm-4 col-xl-2">
+            <label class="form-label" for="filter-semester">Semester</label>
+            <select class="form-select" id="filter-semester">
+                <option value="">All semesters</option>
+                <option value="1st Semester">1st Semester</option>
+                <option value="2nd Semester">2nd Semester</option>
+                <option value="Summer">Summer</option>
+            </select>
+        </div>
+        <div class="col-12 col-sm-4 col-xl-2">
+            <button type="button" class="btn btn-ghost w-100" id="btn-clear-filters">
+                <i class="bi bi-x-circle me-2" aria-hidden="true"></i>Clear filters
+            </button>
+        </div>
+    </div>
+</section>
+
+<section class="panel" aria-label="Grade record list">
+    <div class="table-toolbar">
+        <div class="search-box">
+            <i class="bi bi-search" aria-hidden="true"></i>
+            <label class="visually-hidden" for="grade-search">Search the listed grade records</label>
+            <input type="search" class="form-control" id="grade-search"
+                   placeholder="Search student, subject or remarks" autocomplete="off" maxlength="60" />
+        </div>
+        <div class="toolbar-meta" id="grades-count" aria-live="polite"></div>
+    </div>
+
+    <div class="table-responsive">
+        <table class="table data-table align-middle" id="grades-table">
+            <caption class="visually-hidden">List of grade records</caption>
+            <thead>
+                <tr>
+                    <th scope="col" data-sort="studentName">
+                        <button type="button" class="th-sort">Student<i class="bi bi-arrow-down-up sort-icon" aria-hidden="true"></i></button>
+                    </th>
+                    <th scope="col" data-sort="subjectCode">
+                        <button type="button" class="th-sort">Subject<i class="bi bi-arrow-down-up sort-icon" aria-hidden="true"></i></button>
+                    </th>
+                    <th scope="col" data-sort="schoolYear">
+                        <button type="button" class="th-sort">School Year<i class="bi bi-arrow-down-up sort-icon" aria-hidden="true"></i></button>
+                    </th>
+                    <th scope="col" data-sort="semester">
+                        <button type="button" class="th-sort">Semester<i class="bi bi-arrow-down-up sort-icon" aria-hidden="true"></i></button>
+                    </th>
+                    <th scope="col" data-sort="prelim" class="col-num">
+                        <button type="button" class="th-sort">Prelim<i class="bi bi-arrow-down-up sort-icon" aria-hidden="true"></i></button>
+                    </th>
+                    <th scope="col" data-sort="midterm" class="col-num">
+                        <button type="button" class="th-sort">Midterm<i class="bi bi-arrow-down-up sort-icon" aria-hidden="true"></i></button>
+                    </th>
+                    <th scope="col" data-sort="finals" class="col-num">
+                        <button type="button" class="th-sort">Finals<i class="bi bi-arrow-down-up sort-icon" aria-hidden="true"></i></button>
+                    </th>
+                    <th scope="col" data-sort="finalGrade" class="col-num">
+                        <button type="button" class="th-sort">Final Grade<i class="bi bi-arrow-down-up sort-icon" aria-hidden="true"></i></button>
+                    </th>
+                    <th scope="col" data-sort="remarks">
+                        <button type="button" class="th-sort">Remarks<i class="bi bi-arrow-down-up sort-icon" aria-hidden="true"></i></button>
+                    </th>
+                    <th scope="col" class="col-actions">Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+    </div>
+
+    <div class="table-footer">
+        <div class="table-info" id="grades-info" aria-live="polite"></div>
+        <nav aria-label="Grade records pagination">
+            <ul class="pagination pagination-sm mb-0" id="grades-pager"></ul>
+        </nav>
+    </div>
+</section>
+
+<!-- Create / Edit grade record -->
+<div class="modal fade" id="grade-modal" tabindex="-1" aria-labelledby="grade-modal-title" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <form class="modal-content" id="grade-form" novalidate autocomplete="off">
+            <div class="modal-header">
+                <h2 class="modal-title" id="grade-modal-title">Add Grade Record</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="form-alert" id="grade-form-alert" role="alert" hidden></div>
+
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label class="form-label" for="grade-student">Student <span class="req" aria-hidden="true">*</span></label>
+                        <select class="form-select" id="grade-student" name="studentId" required>
+                            <option value="">Select a student</option>
+                        </select>
+                        <div class="invalid-feedback" data-error-for="studentId"></div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="grade-subject">Subject <span class="req" aria-hidden="true">*</span></label>
+                        <select class="form-select" id="grade-subject" name="subjectId" required>
+                            <option value="">Select a subject</option>
+                        </select>
+                        <div class="invalid-feedback" data-error-for="subjectId"></div>
+                    </div>
+
+                    <div class="col-md-6">
+                        <label class="form-label" for="grade-school-year">School year <span class="req" aria-hidden="true">*</span></label>
+                        <input type="text" class="form-control" id="grade-school-year" name="schoolYear"
+                               maxlength="9" required placeholder="2026-2027" list="school-year-options"
+                               inputmode="numeric" aria-describedby="grade-school-year-help" />
+                        <datalist id="school-year-options"></datalist>
+                        <div class="invalid-feedback" data-error-for="schoolYear"></div>
+                        <div class="form-hint" id="grade-school-year-help">Two consecutive years, for example 2026-2027.</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label" for="grade-semester">Semester <span class="req" aria-hidden="true">*</span></label>
+                        <select class="form-select" id="grade-semester" name="semester" required>
+                            <option value="">Select a semester</option>
+                            <option value="1st Semester">1st Semester</option>
+                            <option value="2nd Semester">2nd Semester</option>
+                            <option value="Summer">Summer</option>
+                        </select>
+                        <div class="invalid-feedback" data-error-for="semester"></div>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="form-section-title">Scores (0 to 100, leave blank if not yet available)</div>
+                    </div>
+
+                    <div class="col-sm-4">
+                        <label class="form-label" for="grade-prelim">Prelim <span class="weight-tag">30%</span></label>
+                        <input type="number" class="form-control" id="grade-prelim" name="prelim"
+                               min="0" max="100" step="0.01" inputmode="decimal" />
+                        <div class="invalid-feedback" data-error-for="prelim"></div>
+                    </div>
+                    <div class="col-sm-4">
+                        <label class="form-label" for="grade-midterm">Midterm <span class="weight-tag">30%</span></label>
+                        <input type="number" class="form-control" id="grade-midterm" name="midterm"
+                               min="0" max="100" step="0.01" inputmode="decimal" />
+                        <div class="invalid-feedback" data-error-for="midterm"></div>
+                    </div>
+                    <div class="col-sm-4">
+                        <label class="form-label" for="grade-finals">Finals <span class="weight-tag">40%</span></label>
+                        <input type="number" class="form-control" id="grade-finals" name="finals"
+                               min="0" max="100" step="0.01" inputmode="decimal" />
+                        <div class="invalid-feedback" data-error-for="finals"></div>
+                    </div>
+
+                    <div class="col-12">
+                        <div class="preview-box" id="grade-preview" aria-live="polite">
+                            <div class="preview-label">
+                                <i class="bi bi-cpu me-2" aria-hidden="true"></i>Server-computed preview
+                            </div>
+                            <div class="preview-grid">
+                                <div class="preview-item">
+                                    <span class="preview-caption">Final Grade</span>
+                                    <span class="preview-value" id="preview-final">--</span>
+                                </div>
+                                <div class="preview-item">
+                                    <span class="preview-caption">Remarks</span>
+                                    <span class="preview-value" id="preview-remarks">--</span>
+                                </div>
+                            </div>
+                            <p class="preview-status" id="preview-status">
+                                Enter scores to see a preview. This is a preview only: the saved value is always recomputed by the server.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Cancel</button>
+                <button type="submit" class="btn btn-primary" id="grade-save">
+                    <i class="bi bi-check2 me-2" aria-hidden="true"></i>Save Grade Record
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- View grade record -->
+<div class="modal fade" id="grade-view-modal" tabindex="-1" aria-labelledby="grade-view-title" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="grade-view-title">Grade Record Details</h2>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <dl class="detail-list" id="grade-view-body"></dl>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="grade-view-edit">
+                    <i class="bi bi-pencil-square me-2" aria-hidden="true"></i>Edit
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/faculty-grades.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,100 @@
+@{
+    Layout = "_Layout";
+
+    var area = ViewData["Area"] as string ?? "Faculty";
+    var activeNav = ViewData["ActiveNav"] as string ?? "";
+    var homeUrl = area == "Faculty" ? "/Faculty/Dashboard" : "/Student/MyGrades";
+
+    Func<string, string> navClass = key => key == activeNav ? "nav-item-link active" : "nav-item-link";
+    Func<string, string?> ariaCurrent = key => key == activeNav ? "page" : null;
+}
+<div class="app-shell shell-pending" id="app-shell" data-required-role="@area">
+
+    <aside class="sidebar" id="sidebar" aria-label="Primary">
+        <a class="sidebar-brand" href="@homeUrl" title="UST Angelicum College">
+            <img src="~/images/logo.png" alt="" class="sidebar-logo" width="44" height="44" />
+            <span class="sidebar-brand-text">
+                <span class="sidebar-brand-title">UST Angelicum College</span>
+                <span class="sidebar-brand-sub">Student Grade Management System</span>
+            </span>
+        </a>
+
+        <nav class="sidebar-nav" aria-label="Main menu">
+            @if (area == "Faculty")
+            {
+                <span class="nav-section-label">Faculty Portal</span>
+                <a class="@navClass("dashboard")" href="/Faculty/Dashboard" aria-current="@ariaCurrent("dashboard")" title="Dashboard">
+                    <i class="bi bi-speedometer2" aria-hidden="true"></i>
+                    <span class="nav-label">Dashboard</span>
+                </a>
+                <a class="@navClass("students")" href="/Faculty/Students" aria-current="@ariaCurrent("students")" title="Students">
+                    <i class="bi bi-people-fill" aria-hidden="true"></i>
+                    <span class="nav-label">Students</span>
+                </a>
+                <a class="@navClass("subjects")" href="/Faculty/Subjects" aria-current="@ariaCurrent("subjects")" title="Subjects">
+                    <i class="bi bi-book-half" aria-hidden="true"></i>
+                    <span class="nav-label">Subjects</span>
+                </a>
+                <a class="@navClass("grades")" href="/Faculty/Grades" aria-current="@ariaCurrent("grades")" title="Grade Records">
+                    <i class="bi bi-journal-check" aria-hidden="true"></i>
+                    <span class="nav-label">Grade Records</span>
+                </a>
+            }
+            else
+            {
+                <span class="nav-section-label">Student Portal</span>
+                <a class="@navClass("mygrades")" href="/Student/MyGrades" aria-current="@ariaCurrent("mygrades")" title="My Grades">
+                    <i class="bi bi-mortarboard-fill" aria-hidden="true"></i>
+                    <span class="nav-label">My Grades</span>
+                </a>
+            }
+        </nav>
+
+        <div class="sidebar-foot">
+            <span class="sidebar-motto">Caritas &bull; Justitia &bull; Fortitudo</span>
+        </div>
+    </aside>
+
+    <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+    <div class="app-main">
+        <header class="topbar">
+            <button type="button" class="icon-btn" id="sidebar-toggle" aria-label="Toggle navigation menu" aria-controls="sidebar" aria-expanded="true">
+                <i class="bi bi-list" aria-hidden="true"></i>
+            </button>
+
+            <div class="topbar-title">@ViewData["Title"]</div>
+
+            <div class="topbar-actions">
+                <button type="button" class="icon-btn" data-theme-toggle aria-label="Switch to dark mode" title="Toggle light or dark mode">
+                    <i class="bi bi-moon-stars-fill" aria-hidden="true"></i>
+                </button>
+
+                <div class="user-chip">
+                    <span class="user-avatar" data-user-initials aria-hidden="true"></span>
+                    <span class="user-meta">
+                        <span class="user-name" data-user-name>&nbsp;</span>
+                        <span class="role-badge" data-user-role></span>
+                    </span>
+                </div>
+
+                <button type="button" class="btn btn-outline-primary btn-sm logout-btn" data-logout title="Sign out">
+                    <i class="bi bi-box-arrow-right" aria-hidden="true"></i>
+                    <span class="logout-label">Logout</span>
+                </button>
+            </div>
+        </header>
+
+        <main class="page-content page-enter" id="main-content" tabindex="-1">
+            @RenderBody()
+        </main>
+
+        <footer class="app-footer">
+            &copy; 2026 UST Angelicum College &bull; Caritas &bull; Justitia &bull; Fortitudo
+        </footer>
+    </div>
+</div>
+
+@section Scripts {
+    @await RenderSectionAsync("Scripts", required: false)
+}
