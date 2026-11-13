@@ -7,11 +7,11 @@
 <div class="page-head">
     <div>
         <h1 class="page-title">Grade Records</h1>
-        <p class="page-sub">Encode Prelim, Midterm and Finals scores. The final grade and remarks are computed by the server.</p>
+        <p class="page-sub">Post, edit and delete student grades. Remarks are computed by the server from the grade.</p>
     </div>
     <div class="page-head-actions">
         <button type="button" class="btn btn-primary" id="btn-add-grade">
-            <i class="bi bi-plus-lg me-2" aria-hidden="true"></i>Add Grade Record
+            <i class="bi bi-plus-lg me-2" aria-hidden="true"></i>Add Grade
         </button>
     </div>
 </div>
@@ -31,18 +31,18 @@
             </select>
         </div>
         <div class="col-6 col-sm-4 col-xl-2">
-            <label class="form-label" for="filter-school-year">School year</label>
-            <select class="form-select" id="filter-school-year">
-                <option value="">All years</option>
-            </select>
-        </div>
-        <div class="col-6 col-sm-4 col-xl-2">
             <label class="form-label" for="filter-semester">Semester</label>
             <select class="form-select" id="filter-semester">
                 <option value="">All semesters</option>
                 <option value="1st Semester">1st Semester</option>
                 <option value="2nd Semester">2nd Semester</option>
                 <option value="Summer">Summer</option>
+            </select>
+        </div>
+        <div class="col-6 col-sm-4 col-xl-2">
+            <label class="form-label" for="filter-school-year">School year</label>
+            <select class="form-select" id="filter-school-year">
+                <option value="">All years</option>
             </select>
         </div>
         <div class="col-12 col-sm-4 col-xl-2">
@@ -75,26 +75,20 @@
                     <th scope="col" data-sort="subjectCode">
                         <button type="button" class="th-sort">Subject<i class="bi bi-arrow-down-up sort-icon" aria-hidden="true"></i></button>
                     </th>
-                    <th scope="col" data-sort="schoolYear">
-                        <button type="button" class="th-sort">School Year<i class="bi bi-arrow-down-up sort-icon" aria-hidden="true"></i></button>
+                    <th scope="col" data-sort="grade" class="col-num">
+                        <button type="button" class="th-sort">Grade<i class="bi bi-arrow-down-up sort-icon" aria-hidden="true"></i></button>
+                    </th>
+                    <th scope="col" data-sort="remarks">
+                        <button type="button" class="th-sort">Remarks<i class="bi bi-arrow-down-up sort-icon" aria-hidden="true"></i></button>
                     </th>
                     <th scope="col" data-sort="semester">
                         <button type="button" class="th-sort">Semester<i class="bi bi-arrow-down-up sort-icon" aria-hidden="true"></i></button>
                     </th>
-                    <th scope="col" data-sort="prelim" class="col-num">
-                        <button type="button" class="th-sort">Prelim<i class="bi bi-arrow-down-up sort-icon" aria-hidden="true"></i></button>
+                    <th scope="col" data-sort="schoolYear">
+                        <button type="button" class="th-sort">School Year<i class="bi bi-arrow-down-up sort-icon" aria-hidden="true"></i></button>
                     </th>
-                    <th scope="col" data-sort="midterm" class="col-num">
-                        <button type="button" class="th-sort">Midterm<i class="bi bi-arrow-down-up sort-icon" aria-hidden="true"></i></button>
-                    </th>
-                    <th scope="col" data-sort="finals" class="col-num">
-                        <button type="button" class="th-sort">Finals<i class="bi bi-arrow-down-up sort-icon" aria-hidden="true"></i></button>
-                    </th>
-                    <th scope="col" data-sort="finalGrade" class="col-num">
-                        <button type="button" class="th-sort">Final Grade<i class="bi bi-arrow-down-up sort-icon" aria-hidden="true"></i></button>
-                    </th>
-                    <th scope="col" data-sort="remarks">
-                        <button type="button" class="th-sort">Remarks<i class="bi bi-arrow-down-up sort-icon" aria-hidden="true"></i></button>
+                    <th scope="col" data-sort="facultyName">
+                        <button type="button" class="th-sort">Posted By<i class="bi bi-arrow-down-up sort-icon" aria-hidden="true"></i></button>
                     </th>
                     <th scope="col" class="col-actions">Actions</th>
                 </tr>
@@ -111,43 +105,52 @@
     </div>
 </section>
 
-<!-- Create / Edit grade record -->
+<!-- Create / Edit grade -->
 <div class="modal fade" id="grade-modal" tabindex="-1" aria-labelledby="grade-modal-title" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <form class="modal-content" id="grade-form" novalidate autocomplete="off">
             <div class="modal-header">
-                <h2 class="modal-title" id="grade-modal-title">Add Grade Record</h2>
+                <h2 class="modal-title" id="grade-modal-title">Add Grade</h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
                 <div class="form-alert" id="grade-form-alert" role="alert" hidden></div>
 
                 <div class="row g-3">
-                    <div class="col-md-6">
+                    <div class="col-12">
                         <label class="form-label" for="grade-student">Student <span class="req" aria-hidden="true">*</span></label>
                         <select class="form-select" id="grade-student" name="studentId" required>
                             <option value="">Select a student</option>
                         </select>
                         <div class="invalid-feedback" data-error-for="studentId"></div>
                     </div>
-                    <div class="col-md-6">
-                        <label class="form-label" for="grade-subject">Subject <span class="req" aria-hidden="true">*</span></label>
-                        <select class="form-select" id="grade-subject" name="subjectId" required>
-                            <option value="">Select a subject</option>
-                        </select>
-                        <div class="invalid-feedback" data-error-for="subjectId"></div>
+
+                    <div class="col-md-4">
+                        <label class="form-label" for="grade-subject-code">Subject code <span class="req" aria-hidden="true">*</span></label>
+                        <input type="text" class="form-control" id="grade-subject-code" name="subjectCode"
+                               maxlength="30" required placeholder="WEB101" list="subject-code-options"
+                               autocapitalize="characters" spellcheck="false"
+                               aria-describedby="grade-subject-code-help" />
+                        <datalist id="subject-code-options"></datalist>
+                        <div class="invalid-feedback" data-error-for="subjectCode"></div>
+                        <div class="form-hint" id="grade-subject-code-help">Pick a known code to fill in the name.</div>
+                    </div>
+                    <div class="col-md-8">
+                        <label class="form-label" for="grade-subject-name">Subject name <span class="req" aria-hidden="true">*</span></label>
+                        <input type="text" class="form-control" id="grade-subject-name" name="subjectName"
+                               maxlength="200" required placeholder="Web Systems and Technologies" />
+                        <div class="invalid-feedback" data-error-for="subjectName"></div>
                     </div>
 
-                    <div class="col-md-6">
-                        <label class="form-label" for="grade-school-year">School year <span class="req" aria-hidden="true">*</span></label>
-                        <input type="text" class="form-control" id="grade-school-year" name="schoolYear"
-                               maxlength="9" required placeholder="2026-2027" list="school-year-options"
-                               inputmode="numeric" aria-describedby="grade-school-year-help" />
-                        <datalist id="school-year-options"></datalist>
-                        <div class="invalid-feedback" data-error-for="schoolYear"></div>
-                        <div class="form-hint" id="grade-school-year-help">Two consecutive years, for example 2026-2027.</div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="grade-value">Grade <span class="req" aria-hidden="true">*</span></label>
+                        <input type="number" class="form-control" id="grade-value" name="grade"
+                               min="0" max="100" step="1" required inputmode="numeric"
+                               aria-describedby="grade-value-help" />
+                        <div class="invalid-feedback" data-error-for="grade"></div>
+                        <div class="form-hint" id="grade-value-help">Whole number from 0 to 100.</div>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label" for="grade-semester">Semester <span class="req" aria-hidden="true">*</span></label>
                         <select class="form-select" id="grade-semester" name="semester" required>
                             <option value="">Select a semester</option>
@@ -157,28 +160,13 @@
                         </select>
                         <div class="invalid-feedback" data-error-for="semester"></div>
                     </div>
-
-                    <div class="col-12">
-                        <div class="form-section-title">Scores (0 to 100, leave blank if not yet available)</div>
-                    </div>
-
-                    <div class="col-sm-4">
-                        <label class="form-label" for="grade-prelim">Prelim <span class="weight-tag">30%</span></label>
-                        <input type="number" class="form-control" id="grade-prelim" name="prelim"
-                               min="0" max="100" step="0.01" inputmode="decimal" />
-                        <div class="invalid-feedback" data-error-for="prelim"></div>
-                    </div>
-                    <div class="col-sm-4">
-                        <label class="form-label" for="grade-midterm">Midterm <span class="weight-tag">30%</span></label>
-                        <input type="number" class="form-control" id="grade-midterm" name="midterm"
-                               min="0" max="100" step="0.01" inputmode="decimal" />
-                        <div class="invalid-feedback" data-error-for="midterm"></div>
-                    </div>
-                    <div class="col-sm-4">
-                        <label class="form-label" for="grade-finals">Finals <span class="weight-tag">40%</span></label>
-                        <input type="number" class="form-control" id="grade-finals" name="finals"
-                               min="0" max="100" step="0.01" inputmode="decimal" />
-                        <div class="invalid-feedback" data-error-for="finals"></div>
+                    <div class="col-md-4">
+                        <label class="form-label" for="grade-school-year">School year <span class="req" aria-hidden="true">*</span></label>
+                        <input type="text" class="form-control" id="grade-school-year" name="schoolYear"
+                               maxlength="9" required placeholder="2026-2027" list="school-year-options"
+                               inputmode="numeric" />
+                        <datalist id="school-year-options"></datalist>
+                        <div class="invalid-feedback" data-error-for="schoolYear"></div>
                     </div>
 
                     <div class="col-12">
@@ -188,8 +176,8 @@
                             </div>
                             <div class="preview-grid">
                                 <div class="preview-item">
-                                    <span class="preview-caption">Final Grade</span>
-                                    <span class="preview-value" id="preview-final">--</span>
+                                    <span class="preview-caption">Grade</span>
+                                    <span class="preview-value" id="preview-grade">--</span>
                                 </div>
                                 <div class="preview-item">
                                     <span class="preview-caption">Remarks</span>
@@ -197,7 +185,11 @@
                                 </div>
                             </div>
                             <p class="preview-status" id="preview-status">
-                                Enter scores to see a preview. This is a preview only: the saved value is always recomputed by the server.
+                                Enter a grade to see a preview. The saved remark is always recomputed by the server.
+                            </p>
+                            <p class="preview-status mt-2 mb-0">
+                                Scale: 95&ndash;100 CMS &bull; 90&ndash;94 SP &bull; 85&ndash;89 SAP &bull;
+                                80&ndash;84 GP &bull; 75&ndash;79 EP &bull; 0&ndash;74 BEP/FAILED
                             </p>
                         </div>
                     </div>
@@ -206,19 +198,19 @@
             <div class="modal-footer">
                 <button type="button" class="btn btn-ghost" data-bs-dismiss="modal">Cancel</button>
                 <button type="submit" class="btn btn-primary" id="grade-save">
-                    <i class="bi bi-check2 me-2" aria-hidden="true"></i>Save Grade Record
+                    <i class="bi bi-check2 me-2" aria-hidden="true"></i>Save Grade
                 </button>
             </div>
         </form>
     </div>
 </div>
 
-<!-- View grade record -->
+<!-- View grade -->
 <div class="modal fade" id="grade-view-modal" tabindex="-1" aria-labelledby="grade-view-title" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h2 class="modal-title" id="grade-view-title">Grade Record Details</h2>
+                <h2 class="modal-title" id="grade-view-title">Grade Details</h2>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">

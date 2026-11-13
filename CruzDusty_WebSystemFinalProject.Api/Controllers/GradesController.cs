@@ -1,3 +1,4 @@
+using CruzDusty_WebSystemFinalProject.Api.Extensions;
 using CruzDusty_WebSystemFinalProject.Api.Models;
 using CruzDusty_WebSystemFinalProject.Api.Models.DTOs;
 using CruzDusty_WebSystemFinalProject.Api.Services.Interfaces;
@@ -19,78 +20,74 @@ public class GradesController : ControllerBase
         _gradeService = gradeService;
     }
 
-    // GET /api/grades?studentId=&subjectId=&schoolYear=&semester=
+    // GET /api/grades?studentId=&subjectCode=&semester=&schoolYear=   (Faculty)
     [HttpGet]
-    [Authorize(Roles = "Faculty")]
+    [Authorize(Roles = AppRoles.Faculty)]
     public async Task<ActionResult<IReadOnlyList<GradeResponseDto>>> GetAll(
         [FromQuery] int? studentId,
-        [FromQuery] int? subjectId,
-        [FromQuery] string? schoolYear,
-        [FromQuery] string? semester)
+        [FromQuery] string? subjectCode,
+        [FromQuery] string? semester,
+        [FromQuery] string? schoolYear)
     {
-        var grades = await _gradeService.GetAllAsync(studentId, subjectId, schoolYear, semester);
-        return Ok(grades);
+        return Ok(await _gradeService.GetAllAsync(studentId, subjectCode, semester, schoolYear));
     }
 
-    // GET /api/grades/5
+    // GET /api/grades/5   (Faculty: any record. Student: own record only, otherwise 404.)
     [HttpGet("{id:int}")]
-    [Authorize(Roles = "Faculty")]
+    [Authorize(Roles = AppRoles.FacultyOrStudent)]
     public async Task<ActionResult<GradeResponseDto>> GetById(int id)
     {
-        var grade = await _gradeService.GetByIdAsync(id);
-        return Ok(grade);
+        if (User.IsInRole(AppRoles.Faculty))
+        {
+            return Ok(await _gradeService.GetByIdAsync(id, ownerStudentId: null));
+        }
+
+        var studentId = User.GetIntClaim(AppClaimTypes.StudentId);
+        if (studentId is null)
+        {
+            return Forbid();
+        }
+
+        return Ok(await _gradeService.GetByIdAsync(id, ownerStudentId: studentId));
     }
 
-    // POST /api/grades  (server computes FinalGrade and Remarks)
+    // POST /api/grades   (Faculty. FacultyId comes from the token; Remarks from the server.)
     [HttpPost]
-    [Authorize(Roles = "Faculty")]
-    public async Task<ActionResult<GradeResponseDto>> Create([FromBody] GradeCreateDto dto)
+    [Authorize(Roles = AppRoles.Faculty)]
+    public async Task<ActionResult<GradeResponseDto>> Create([FromBody] GradeRequestDto dto)
     {
-        var created = await _gradeService.CreateAsync(dto);
-        return CreatedAtAction(nameof(GetById), new { id = created.GradeRecordId }, created);
+        var facultyId = User.GetIntClaim(AppClaimTypes.FacultyId);
+        if (facultyId is null)
+        {
+            return Forbid();
+        }
+
+        var created = await _gradeService.CreateAsync(dto, facultyId.Value);
+        return CreatedAtAction(nameof(GetById), new { id = created.GradeId }, created);
     }
 
-    // PUT /api/grades/5  (server recomputes FinalGrade and Remarks)
+    // PUT /api/grades/5   (Faculty. Remarks are recomputed from the new grade.)
     [HttpPut("{id:int}")]
-    [Authorize(Roles = "Faculty")]
-    public async Task<ActionResult<GradeResponseDto>> Update(int id, [FromBody] GradeUpdateDto dto)
+    [Authorize(Roles = AppRoles.Faculty)]
+    public async Task<ActionResult<GradeResponseDto>> Update(int id, [FromBody] GradeRequestDto dto)
     {
-        var updated = await _gradeService.UpdateAsync(id, dto);
-        return Ok(updated);
+        return Ok(await _gradeService.UpdateAsync(id, dto));
     }
 
-    // DELETE /api/grades/5
+    // DELETE /api/grades/5   (Faculty)
     [HttpDelete("{id:int}")]
-    [Authorize(Roles = "Faculty")]
+    [Authorize(Roles = AppRoles.Faculty)]
     public async Task<IActionResult> Delete(int id)
     {
         await _gradeService.DeleteAsync(id);
         return NoContent();
     }
 
-    // POST /api/grades/preview  (computes without saving)
+    // POST /api/grades/preview   (Faculty. Computes the remark without saving.)
     [HttpPost("preview")]
-    [Authorize(Roles = "Faculty")]
+    [Authorize(Roles = AppRoles.Faculty)]
     public ActionResult<GradePreviewResponseDto> Preview([FromBody] GradePreviewRequestDto dto)
     {
-        var preview = _gradeService.Preview(dto);
-        return Ok(preview);
-    }
-
-    // GET /api/grades/me
-    // The StudentId comes ONLY from the signed JWT claim.
-    [HttpGet("me")]
-    [Authorize(Roles = "Student")]
-    public async Task<ActionResult<MyGradesResponseDto>> GetMine()
-    {
-        var claimValue = User.FindFirst(AppClaimTypes.StudentId)?.Value;
-
-        if (!int.TryParse(claimValue, out var studentId))
-        {
-            return Forbid();
-        }
-
-        var result = await _gradeService.GetMyGradesAsync(studentId);
-        return Ok(result);
+        return Ok(_gradeService.Preview(dto));
     }
 }

@@ -27,7 +27,7 @@
         <h1 class="welcome-name" id="welcome-name"><span class="skeleton skeleton-text skeleton-w-50"></span></h1>
         <p class="welcome-meta">
             <span class="welcome-chip" id="welcome-number"></span>
-            <span class="welcome-chip" id="welcome-course"></span>
+            <span class="welcome-chip" id="welcome-email"></span>
         </p>
     </div>
     <div class="welcome-actions no-print">
@@ -42,9 +42,9 @@
         <div class="stat-card stagger-item" style="--i:0">
             <div class="stat-icon stat-icon-blue" aria-hidden="true"><i class="bi bi-award-fill"></i></div>
             <div class="stat-body">
-                <div class="stat-label">General Weighted Average</div>
-                <div class="stat-value" id="sum-gwa"><span class="skeleton skeleton-text"></span></div>
-                <div class="stat-hint" id="sum-gwa-hint">Weighted by units</div>
+                <div class="stat-label">Average Grade</div>
+                <div class="stat-value" id="sum-average"><span class="skeleton skeleton-text"></span></div>
+                <div class="stat-hint" id="sum-average-hint">Of the subjects shown</div>
             </div>
         </div>
     </div>
@@ -54,7 +54,7 @@
             <div class="stat-body">
                 <div class="stat-label">Subjects Passed</div>
                 <div class="stat-value" id="sum-passed"><span class="skeleton skeleton-text"></span></div>
-                <div class="stat-hint">Final grade 75 or higher</div>
+                <div class="stat-hint">Grade 75 or higher</div>
             </div>
         </div>
     </div>
@@ -64,17 +64,17 @@
             <div class="stat-body">
                 <div class="stat-label">Subjects Failed</div>
                 <div class="stat-value" id="sum-failed"><span class="skeleton skeleton-text"></span></div>
-                <div class="stat-hint">Final grade below 75</div>
+                <div class="stat-hint">BEP/FAILED (below 75)</div>
             </div>
         </div>
     </div>
     <div class="col-6 col-xl-3">
         <div class="stat-card stagger-item" style="--i:3">
-            <div class="stat-icon stat-icon-sun" aria-hidden="true"><i class="bi bi-hourglass-split"></i></div>
+            <div class="stat-icon stat-icon-gold" aria-hidden="true"><i class="bi bi-journal-bookmark-fill"></i></div>
             <div class="stat-body">
-                <div class="stat-label">Incomplete</div>
-                <div class="stat-value" id="sum-incomplete"><span class="skeleton skeleton-text"></span></div>
-                <div class="stat-hint">Missing one or more scores</div>
+                <div class="stat-label">Total Subjects</div>
+                <div class="stat-value" id="sum-total"><span class="skeleton skeleton-text"></span></div>
+                <div class="stat-hint">Grades posted</div>
             </div>
         </div>
     </div>
@@ -82,7 +82,7 @@
 
 <section class="panel" aria-labelledby="my-grades-title">
     <div class="panel-head">
-        <h2 class="panel-title" id="my-grades-title">Grade Records</h2>
+        <h2 class="panel-title" id="my-grades-title">My Grades</h2>
         <span class="panel-note" id="my-grades-count" aria-live="polite"></span>
     </div>
 
@@ -91,19 +91,15 @@
     <div class="grades-desktop">
         <div class="table-responsive">
             <table class="table data-table align-middle" id="my-grades-table">
-                <caption class="visually-hidden">My grade records</caption>
+                <caption class="visually-hidden">My grades</caption>
                 <thead>
                     <tr>
-                        <th scope="col">Code</th>
+                        <th scope="col">Subject Code</th>
                         <th scope="col">Subject</th>
-                        <th scope="col" class="col-num">Units</th>
-                        <th scope="col">School Year</th>
-                        <th scope="col">Semester</th>
-                        <th scope="col" class="col-num">Prelim</th>
-                        <th scope="col" class="col-num">Midterm</th>
-                        <th scope="col" class="col-num">Finals</th>
-                        <th scope="col" class="col-num">Final Grade</th>
+                        <th scope="col" class="col-num">Grade</th>
                         <th scope="col">Remarks</th>
+                        <th scope="col">Semester</th>
+                        <th scope="col">School Year</th>
                     </tr>
                 </thead>
                 <tbody></tbody>
@@ -115,13 +111,13 @@
 
     <div class="empty-state" id="my-grades-empty" hidden>
         <img src="~/images/logo.png" alt="" class="empty-logo" width="72" height="72" />
-        <p class="empty-title">No grades to show yet</p>
-        <p class="empty-text">Your grades will appear here once your faculty has encoded them.</p>
+        <p class="empty-title">No grades have been posted yet</p>
+        <p class="empty-text">Your grades will appear here as soon as your faculty posts them.</p>
     </div>
 
     <p class="panel-footnote">
-        Final grade = Prelim 30% + Midterm 30% + Finals 40%. The passing grade is 75.
-        Final grades and remarks are computed by the server.
+        Remarks are computed by the server: 95&ndash;100 CMS, 90&ndash;94 SP, 85&ndash;89 SAP,
+        80&ndash;84 GP, 75&ndash;79 EP, 0&ndash;74 BEP/FAILED.
     </p>
 </section>
 

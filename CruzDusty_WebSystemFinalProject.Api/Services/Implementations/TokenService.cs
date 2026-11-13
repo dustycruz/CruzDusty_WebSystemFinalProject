@@ -18,22 +18,27 @@ public class TokenService : ITokenService
         _settings = options.Value;
     }
 
-    public TokenResult CreateToken(User user)
+    public TokenResult CreateToken(ApplicationUser user, string role, string fullName)
     {
         var claims = new List<Claim>
         {
-            new Claim(AppClaimTypes.UserId, user.UserId.ToString()),
-            new Claim(AppClaimTypes.Username, user.Username),
-            new Claim(AppClaimTypes.FullName, user.FullName),
-            new Claim(AppClaimTypes.Role, user.Role),
+            new Claim(AppClaimTypes.UserId, user.Id),
+            new Claim(AppClaimTypes.Username, user.UserName ?? string.Empty),
+            new Claim(AppClaimTypes.FullName, fullName),
+            new Claim(AppClaimTypes.Role, role),
             new Claim("jti", Guid.NewGuid().ToString())
         };
 
-        // The StudentId claim is what GET /api/grades/me trusts.
-        // It is written by the server at login and signed inside the token.
-        if (user.Role == AppRoles.Student && user.Student is not null)
+        // These claims are written by the server from the Identity account mapping and are
+        // signed inside the token. The API trusts them, never a StudentId sent by the browser.
+        if (role == AppRoles.Student && user.StudentId.HasValue)
         {
-            claims.Add(new Claim(AppClaimTypes.StudentId, user.Student.StudentId.ToString()));
+            claims.Add(new Claim(AppClaimTypes.StudentId, user.StudentId.Value.ToString()));
+        }
+
+        if (role == AppRoles.Faculty && user.FacultyId.HasValue)
+        {
+            claims.Add(new Claim(AppClaimTypes.FacultyId, user.FacultyId.Value.ToString()));
         }
 
         var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_settings.Key));
@@ -50,8 +55,6 @@ public class TokenService : ITokenService
             expires: expiresAt,
             signingCredentials: credentials);
 
-        var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
-
-        return new TokenResult(tokenString, expiresAt);
+        return new TokenResult(new JwtSecurityTokenHandler().WriteToken(token), expiresAt);
     }
 }

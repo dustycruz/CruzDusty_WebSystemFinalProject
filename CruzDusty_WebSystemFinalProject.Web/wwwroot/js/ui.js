@@ -13,11 +13,21 @@ const UI = (() => {
         info: { icon: 'bi-info-circle-fill', title: 'Notice' }
     };
 
+    // The required grading scale. chartVar is the colour used for the dashboard chart.
     const REMARK_STYLES = {
-        Passed: { css: 'remark-passed', icon: 'bi-check-circle-fill' },
-        Failed: { css: 'remark-failed', icon: 'bi-x-circle-fill' },
-        Incomplete: { css: 'remark-incomplete', icon: 'bi-hourglass-split' }
+        'CMS': { css: 'remark-cms', icon: 'bi-trophy-fill', chartVar: '--ac-gold', passing: true },
+        'SP': { css: 'remark-sp', icon: 'bi-star-fill', chartVar: '--ac-success', passing: true },
+        'SAP': { css: 'remark-sap', icon: 'bi-patch-check-fill', chartVar: '--ac-blue-dark', passing: true },
+        'GP': { css: 'remark-gp', icon: 'bi-check-circle-fill', chartVar: '--ac-blue', passing: true },
+        'EP': { css: 'remark-ep', icon: 'bi-check2-circle', chartVar: '--ac-sun', passing: true },
+        'BEP/FAILED': { css: 'remark-failed', icon: 'bi-x-circle-fill', chartVar: '--ac-red', passing: false }
     };
+    const REMARK_ORDER = ['CMS', 'SP', 'SAP', 'GP', 'EP', 'BEP/FAILED'];
+    const UNKNOWN_REMARK = { css: 'remark-unknown', icon: 'bi-question-circle', chartVar: '--ac-ink', passing: false };
+
+    function remarkStyle(remarks) {
+        return REMARK_STYLES[remarks] || UNKNOWN_REMARK;
+    }
 
     // ------------------------------------------------------------------
     // Small helpers
@@ -92,7 +102,7 @@ const UI = (() => {
     }
 
     function remarksBadge(remarks, pop) {
-        const style = REMARK_STYLES[remarks] || REMARK_STYLES.Incomplete;
+        const style = remarkStyle(remarks);
         const popClass = pop ? ' badge-pop' : '';
         return `<span class="remark-badge ${style.css}${popClass}">` +
             `<i class="bi ${style.icon}" aria-hidden="true"></i>${escapeHtml(remarks)}</span>`;
@@ -800,6 +810,9 @@ const UI = (() => {
         formatDateTime: formatDateTime,
         initials: initials,
         remarksBadge: remarksBadge,
+        remarkOrder: REMARK_ORDER,
+        remarkStyle: remarkStyle,
+        isPassing: remarks => remarkStyle(remarks).passing,
         emptyStateHtml: emptyStateHtml,
         detailListHtml: detailListHtml,
         toast: toast,

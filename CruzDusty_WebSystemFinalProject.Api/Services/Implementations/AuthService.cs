@@ -1,4 +1,3 @@
-using CruzDusty_WebSystemFinalProject.Api.Data;
 using CruzDusty_WebSystemFinalProject.Api.Exceptions;
 using CruzDusty_WebSystemFinalProject.Api.Models;
 using CruzDusty_WebSystemFinalProject.Api.Models.DTOs;
@@ -13,58 +12,95 @@ public class AuthService : IAuthService
 {
     private const string InvalidCredentialsMessage = "Invalid username or password.";
 
-    private readonly AppDbContext _db;
-    private readonly IPasswordHasher<User> _passwordHasher;
+    private readonly UserManager<ApplicationUser> _userManager;
     private readonly ITokenService _tokenService;
 
-    public AuthService(AppDbContext db, IPasswordHasher<User> passwordHasher, ITokenService tokenService)
+    public AuthService(UserManager<ApplicationUser> userManager, ITokenService tokenService)
     {
-        _db = db;
-        _passwordHasher = passwordHasher;
+        _userManager = userManager;
         _tokenService = tokenService;
     }
 
     public async Task<LoginResponseDto> LoginAsync(LoginRequestDto request)
     {
-        var username = request.Username.Trim();
+        var normalizedUsername = _userManager.NormalizeName(request.Username.Trim());
 
-        var user = await _db.Users
+        var user = await _userManager.Users
             .Include(u => u.Student)
-            .FirstOrDefaultAsync(u => u.Username == username);
+            .Include(u => u.Faculty)
+            .FirstOrDefaultAsync(u => u.NormalizedUserName == normalizedUsername);
 
         // Same message for "no such user" and "wrong password" so usernames cannot be probed.
-        if (user is null || !user.IsActive)
+        if (user is null)
         {
             throw ApiException.Unauthorized(InvalidCredentialsMessage);
         }
 
-        var verification = _passwordHasher.VerifyHashedPassword(user, user.PasswordHash, request.Password);
-        if (verification == PasswordVerificationResult.Failed)
+        if (await _userManager.IsLockedOutAsync(user))
         {
+            throw ApiException.Unauthorized(
+                "This account is temporarily locked after too many failed sign-in attempts. Try again in a few minutes.");
+        }
+
+        // Identity verifies the hashed password; plaintext passwords are never stored.
+        if (!await _userManager.CheckPasswordAsync(user, request.Password))
+        {
+            await _userManager.AccessFailedAsync(user);
             throw ApiException.Unauthorized(InvalidCredentialsMessage);
         }
 
-        if (verification == PasswordVerificationResult.SuccessRehashNeeded)
+        await _userManager.ResetAccessFailedCountAsync(user);
+
+        var roles = await _userManager.GetRolesAsync(user);
+        string role;
+        string fullName;
+
+        // Role-specific mapping is enforced: a Faculty login must point to a faculty record,
+        // a Student login to a student record, and never to both.
+        if (roles.Contains(AppRoles.Faculty))
         {
-            user.PasswordHash = _passwordHasher.HashPassword(user, request.Password);
-            user.UpdatedAt = DateTime.UtcNow;
-            await _db.SaveChangesAsync();
+            if (user.Faculty is null || user.StudentId is not null)
+            {
+                throw ApiException.Forbidden("This faculty account is not linked to a faculty record.");
+            }
+
+            if (!user.Faculty.IsActive)
+            {
+                throw ApiException.Forbidden("This faculty record is inactive.");
+            }
+
+            role = AppRoles.Faculty;
+            fullName = user.Faculty.FullName;
+        }
+        else if (roles.Contains(AppRoles.Student))
+        {
+            if (user.Student is null || user.FacultyId is not null)
+            {
+                throw ApiException.Forbidden("This student account is not linked to a student record.");
+            }
+
+            if (!user.Student.IsActive)
+            {
+                throw ApiException.Forbidden("This student record is inactive.");
+            }
+
+            role = AppRoles.Student;
+            fullName = user.Student.FullName;
+        }
+        else
+        {
+            throw ApiException.Forbidden("This account has no role assigned.");
         }
 
-        if (user.Role == AppRoles.Student && user.Student is null)
-        {
-            throw ApiException.Forbidden(
-                "This account is not linked to a student record. Please contact your faculty adviser.");
-        }
-
-        var token = _tokenService.CreateToken(user);
+        var token = _tokenService.CreateToken(user, role, fullName);
 
         return new LoginResponseDto
         {
             Token = token.Token,
-            Role = user.Role,
-            FullName = user.FullName,
-            StudentId = user.Student?.StudentId,
+            Role = role,
+            FullName = fullName,
+            StudentId = role == AppRoles.Student ? user.StudentId : null,
+            FacultyId = role == AppRoles.Faculty ? user.FacultyId : null,
             ExpiresAt = token.ExpiresAt
         };
     }

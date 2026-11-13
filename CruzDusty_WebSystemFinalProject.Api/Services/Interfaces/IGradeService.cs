@@ -4,17 +4,18 @@ namespace CruzDusty_WebSystemFinalProject.Api.Services.Interfaces;
 
 public interface IGradeService
 {
-    Task<IReadOnlyList<GradeResponseDto>> GetAllAsync(int? studentId, int? subjectId, string? schoolYear, string? semester);
+    Task<IReadOnlyList<GradeResponseDto>> GetAllAsync(int? studentId, string? subjectCode, string? semester, string? schoolYear);
 
-    Task<GradeResponseDto> GetByIdAsync(int id);
+    // ownerStudentId: null for faculty; the caller's own StudentId for students.
+    Task<GradeResponseDto> GetByIdAsync(int id, int? ownerStudentId);
 
-    Task<GradeResponseDto> CreateAsync(GradeCreateDto dto);
+    Task<GradeResponseDto> CreateAsync(GradeRequestDto dto, int facultyId);
 
-    Task<GradeResponseDto> UpdateAsync(int id, GradeUpdateDto dto);
+    Task<GradeResponseDto> UpdateAsync(int id, GradeRequestDto dto);
 
     Task DeleteAsync(int id);
 
-    Task<MyGradesResponseDto> GetMyGradesAsync(int studentId);
+    Task<MyGradesResponseDto> GetStudentGradesAsync(int studentId);
 
     GradePreviewResponseDto Preview(GradePreviewRequestDto dto);
 }

@@ -1,5 +1,6 @@
 namespace CruzDusty_WebSystemFinalProject.Api.Models.Entities;
 
+// Maps to dbo.Students from the instructor's SQL script.
 public class Student
 {
     public int StudentId { get; set; }
@@ -8,35 +9,14 @@ public class Student
 
     public string FirstName { get; set; } = string.Empty;
 
-    public string? MiddleName { get; set; }
-
     public string LastName { get; set; } = string.Empty;
 
-    public string? Email { get; set; }
+    public string Email { get; set; } = string.Empty;
 
-    public string Course { get; set; } = string.Empty;
+    public bool IsActive { get; set; } = true;
 
-    public int YearLevel { get; set; }
+    public ICollection<StudentGrade> Grades { get; set; } = new List<StudentGrade>();
 
-    public int? UserId { get; set; }
-
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-    public DateTime? UpdatedAt { get; set; }
-
-    public User? User { get; set; }
-
-    public ICollection<GradeRecord> GradeRecords { get; set; } = new List<GradeRecord>();
-
-    // Not mapped: "Juan S. Dela Cruz"
-    public string FullName =>
-        string.IsNullOrWhiteSpace(MiddleName)
-            ? $"{FirstName} {LastName}"
-            : $"{FirstName} {MiddleName.Trim()[0]}. {LastName}";
-
-    // Not mapped: "Dela Cruz, Juan S."
-    public string ListName =>
-        string.IsNullOrWhiteSpace(MiddleName)
-            ? $"{LastName}, {FirstName}"
-            : $"{LastName}, {FirstName} {MiddleName.Trim()[0]}.";
+    // Not mapped: "Juan Dela Cruz"
+    public string FullName => $"{FirstName} {LastName}";
 }

@@ -1,215 +1,154 @@
 using CruzDusty_WebSystemFinalProject.Api.Models;
 using CruzDusty_WebSystemFinalProject.Api.Models.Entities;
-using CruzDusty_WebSystemFinalProject.Api.Services.Interfaces;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace CruzDusty_WebSystemFinalProject.Api.Data;
 
 public static class DbSeeder
 {
-    private const string FacultyUsername = "faculty1";
-    private const string FacultyPassword = "Faculty@123";
-    private const string FacultyFullName = "Prof. Teresa Villanueva";
+    // Demonstration credentials only. They are created in the Development environment only.
+    private const string DemoFacultyPassword = "Faculty@123";
+    private const string DemoStudentPassword = "Student@123";
 
-    private const string StudentPassword = "Student@123";
+    private static readonly DemoAccount[] DemoAccounts =
+    {
+        new("faculty1", AppRoles.Faculty, "FAC-001", DemoFacultyPassword),
+        new("faculty2", AppRoles.Faculty, "FAC-002", DemoFacultyPassword),
+        new("student1", AppRoles.Student, "2026-0001", DemoStudentPassword),
+        new("student2", AppRoles.Student, "2026-0002", DemoStudentPassword),
+        new("student3", AppRoles.Student, "2026-0003", DemoStudentPassword)
+    };
 
-    public static async Task SeedAsync(IServiceProvider services)
+    public static async Task InitializeAsync(IServiceProvider services, bool seedDemoAccounts)
     {
         using var scope = services.CreateScope();
         var provider = scope.ServiceProvider;
 
         var db = provider.GetRequiredService<AppDbContext>();
-        var passwordHasher = provider.GetRequiredService<IPasswordHasher<User>>();
-        var calculator = provider.GetRequiredService<IGradeCalculator>();
         var logger = provider.GetRequiredService<ILoggerFactory>().CreateLogger("DbSeeder");
 
-        if (!await db.Database.CanConnectAsync())
+        await EnsureAcademicTablesExistAsync(db);
+
+        // Creates or updates the Identity tables and the StudentId / FacultyId mapping.
+        await db.Database.MigrateAsync();
+        logger.LogInformation("Identity migrations are up to date.");
+
+        if (!seedDemoAccounts)
         {
-            throw new InvalidOperationException(
-                "Cannot connect to the database. Check ConnectionStrings:DefaultConnection in appsettings.json " +
-                "and run Database/CruzDusty_WebSystemFinalProject.sql first.");
+            logger.LogInformation("Demo accounts are only created in the Development environment.");
+            return;
         }
 
-        await EnsureFacultyAsync(db, passwordHasher);
+        var roleManager = provider.GetRequiredService<RoleManager<IdentityRole>>();
+        var userManager = provider.GetRequiredService<UserManager<ApplicationUser>>();
 
-        var studentOne = await EnsureStudentAccountAsync(
-            db,
-            passwordHasher,
-            username: "student1",
-            studentNumber: "2025-0001",
-            firstName: "Juan",
-            middleName: "Santos",
-            lastName: "Dela Cruz",
-            email: "juan.delacruz@example.com",
-            course: "BS Information Technology",
-            yearLevel: 2);
+        foreach (var role in new[] { AppRoles.Faculty, AppRoles.Student })
+        {
+            if (!await roleManager.RoleExistsAsync(role))
+            {
+                EnsureSucceeded(await roleManager.CreateAsync(new IdentityRole(role)), $"create the role '{role}'");
+            }
+        }
 
-        var studentTwo = await EnsureStudentAccountAsync(
-            db,
-            passwordHasher,
-            username: "student2",
-            studentNumber: "2025-0002",
-            firstName: "Maria",
-            middleName: "Lopez",
-            lastName: "Santos",
-            email: "maria.santos@example.com",
-            course: "BS Information Technology",
-            yearLevel: 2);
-
-        await EnsureGradeRecordsAsync(db, calculator, studentOne, studentTwo);
+        foreach (var account in DemoAccounts)
+        {
+            await EnsureAccountAsync(db, userManager, logger, account);
+        }
 
         logger.LogInformation("Database seeding completed.");
     }
 
-    private static async Task EnsureFacultyAsync(AppDbContext db, IPasswordHasher<User> passwordHasher)
+    private static async Task EnsureAcademicTablesExistAsync(AppDbContext db)
     {
-        var exists = await db.Users.AnyAsync(u => u.Username == FacultyUsername);
-        if (exists)
+        try
         {
-            return;
+            _ = await db.Students.AnyAsync();
+            _ = await db.FacultyMembers.AnyAsync();
+            _ = await db.StudentGrades.AnyAsync();
         }
-
-        var faculty = new User
+        catch (SqlException ex)
         {
-            Username = FacultyUsername,
-            FullName = FacultyFullName,
-            Role = AppRoles.Faculty,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
-        };
-        faculty.PasswordHash = passwordHasher.HashPassword(faculty, FacultyPassword);
-
-        db.Users.Add(faculty);
-        await db.SaveChangesAsync();
+            throw new InvalidOperationException(
+                "The academic tables (Students, Faculty, StudentGrades) could not be read. " +
+                "Run Database/StudentGradeManagementDB.sql first and check ConnectionStrings:DefaultConnection.",
+                ex);
+        }
     }
 
-    private static async Task<Student> EnsureStudentAccountAsync(
+    private static async Task EnsureAccountAsync(
         AppDbContext db,
-        IPasswordHasher<User> passwordHasher,
-        string username,
-        string studentNumber,
-        string firstName,
-        string? middleName,
-        string lastName,
-        string? email,
-        string course,
-        int yearLevel)
+        UserManager<ApplicationUser> userManager,
+        ILogger logger,
+        DemoAccount account)
     {
-        var student = await db.Students
-            .Include(s => s.User)
-            .FirstOrDefaultAsync(s => s.StudentNumber == studentNumber);
+        int? studentId = null;
+        int? facultyId = null;
+        string email;
 
-        if (student is null)
+        if (account.Role == AppRoles.Faculty)
         {
-            student = new Student
+            var faculty = await db.FacultyMembers.FirstOrDefaultAsync(f => f.FacultyNumber == account.RecordNumber);
+            if (faculty is null)
             {
-                StudentNumber = studentNumber,
-                FirstName = firstName,
-                MiddleName = middleName,
-                LastName = lastName,
-                Email = email,
-                Course = course,
-                YearLevel = yearLevel,
-                CreatedAt = DateTime.UtcNow
-            };
-            db.Students.Add(student);
-        }
-
-        if (student.User is null)
-        {
-            var user = await db.Users
-                .Include(u => u.Student)
-                .FirstOrDefaultAsync(u => u.Username == username);
-
-            if (user is null)
-            {
-                user = new User
-                {
-                    Username = username,
-                    FullName = $"{student.FirstName} {student.LastName}",
-                    Role = AppRoles.Student,
-                    IsActive = true,
-                    CreatedAt = DateTime.UtcNow
-                };
-                user.PasswordHash = passwordHasher.HashPassword(user, StudentPassword);
-                db.Users.Add(user);
-            }
-
-            if (user.Student is null)
-            {
-                student.User = user;
-                student.UpdatedAt = DateTime.UtcNow;
-            }
-        }
-
-        await db.SaveChangesAsync();
-        return student;
-    }
-
-    private static async Task EnsureGradeRecordsAsync(
-        AppDbContext db,
-        IGradeCalculator calculator,
-        Student studentOne,
-        Student studentTwo)
-    {
-        if (await db.GradeRecords.AnyAsync())
-        {
-            return;
-        }
-
-        var subjects = await db.Subjects.ToListAsync();
-        if (subjects.Count == 0)
-        {
-            return;
-        }
-
-        void AddRecord(
-            Student student,
-            string subjectCode,
-            string schoolYear,
-            string semester,
-            decimal? prelim,
-            decimal? midterm,
-            decimal? finals)
-        {
-            var subject = subjects.FirstOrDefault(s => s.SubjectCode == subjectCode);
-            if (subject is null)
-            {
+                logger.LogWarning("Faculty {Number} not found; skipping login {Username}.", account.RecordNumber, account.Username);
                 return;
             }
 
-            // Remarks and FinalGrade always come from the calculator, never from literals.
-            var computed = calculator.Compute(prelim, midterm, finals);
-
-            db.GradeRecords.Add(new GradeRecord
+            facultyId = faculty.FacultyId;
+            email = faculty.Email;
+        }
+        else
+        {
+            var student = await db.Students.FirstOrDefaultAsync(s => s.StudentNumber == account.RecordNumber);
+            if (student is null)
             {
-                StudentId = student.StudentId,
-                SubjectId = subject.SubjectId,
-                SchoolYear = schoolYear,
-                Semester = semester,
-                Prelim = prelim,
-                Midterm = midterm,
-                Finals = finals,
-                FinalGrade = computed.FinalGrade,
-                Remarks = computed.Remarks,
-                CreatedAt = DateTime.UtcNow
-            });
+                logger.LogWarning("Student {Number} not found; skipping login {Username}.", account.RecordNumber, account.Username);
+                return;
+            }
+
+            studentId = student.StudentId;
+            email = student.Email;
         }
 
-        // student1 (Juan Dela Cruz)
-        AddRecord(studentOne, "IT101", "2025-2026", Semesters.Second, 88m, 90m, 92m);
-        AddRecord(studentOne, "GE102", "2025-2026", Semesters.Second, 84m, 86m, 81m);
-        AddRecord(studentOne, "IT102", "2026-2027", Semesters.First, 70m, 68m, 72m);
-        AddRecord(studentOne, "IT202", "2026-2027", Semesters.First, 91m, 89m, 94m);
-        AddRecord(studentOne, "GE101", "2026-2027", Semesters.First, 85m, 80m, null);
+        var user = await userManager.FindByNameAsync(account.Username);
 
-        // student2 (Maria Santos)
-        AddRecord(studentTwo, "IT101", "2025-2026", Semesters.Second, 78m, 82m, 80m);
-        AddRecord(studentTwo, "IT102", "2026-2027", Semesters.First, 95m, 93m, 97m);
-        AddRecord(studentTwo, "GE102", "2026-2027", Semesters.First, 60m, 72m, 74m);
-        AddRecord(studentTwo, "PE101", "2026-2027", Semesters.First, 90m, null, null);
+        if (user is null)
+        {
+            user = new ApplicationUser
+            {
+                UserName = account.Username,
+                Email = email,
+                EmailConfirmed = true,
+                StudentId = studentId,
+                FacultyId = facultyId
+            };
 
-        await db.SaveChangesAsync();
+            // UserManager hashes the password with PasswordHasher<T>; no plaintext is stored.
+            EnsureSucceeded(await userManager.CreateAsync(user, account.Password), $"create the user '{account.Username}'");
+        }
+        else if (user.StudentId != studentId || user.FacultyId != facultyId)
+        {
+            user.StudentId = studentId;
+            user.FacultyId = facultyId;
+            EnsureSucceeded(await userManager.UpdateAsync(user), $"update the mapping for '{account.Username}'");
+        }
+
+        if (!await userManager.IsInRoleAsync(user, account.Role))
+        {
+            EnsureSucceeded(await userManager.AddToRoleAsync(user, account.Role), $"add '{account.Username}' to '{account.Role}'");
+        }
     }
+
+    private static void EnsureSucceeded(IdentityResult result, string action)
+    {
+        if (!result.Succeeded)
+        {
+            var reasons = string.Join("; ", result.Errors.Select(error => error.Description));
+            throw new InvalidOperationException($"Could not {action}: {reasons}");
+        }
+    }
+
+    private sealed record DemoAccount(string Username, string Role, string RecordNumber, string Password);
 }

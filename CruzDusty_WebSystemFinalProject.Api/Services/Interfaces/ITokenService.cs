@@ -6,5 +6,5 @@ public sealed record TokenResult(string Token, DateTime ExpiresAt);
 
 public interface ITokenService
 {
-    TokenResult CreateToken(User user);
+    TokenResult CreateToken(ApplicationUser user, string role, string fullName);
 }

@@ -10,5 +10,7 @@ public class LoginResponseDto
 
     public int? StudentId { get; set; }
 
+    public int? FacultyId { get; set; }
+
     public DateTime ExpiresAt { get; set; }
 }

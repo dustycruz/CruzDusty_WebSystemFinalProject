@@ -1,137 +1,133 @@
 using CruzDusty_WebSystemFinalProject.Api.Models.Entities;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace CruzDusty_WebSystemFinalProject.Api.Data;
 
-public class AppDbContext : DbContext
+public class AppDbContext : IdentityDbContext<ApplicationUser>
 {
     public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
     {
     }
 
-    public DbSet<User> Users => Set<User>();
-
     public DbSet<Student> Students => Set<Student>();
 
-    public DbSet<Subject> Subjects => Set<Subject>();
+    public DbSet<Faculty> FacultyMembers => Set<Faculty>();
 
-    public DbSet<GradeRecord> GradeRecords => Set<GradeRecord>();
+    public DbSet<StudentGrade> StudentGrades => Set<StudentGrade>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
+        // Configures the ASP.NET Core Identity tables (AspNetUsers, AspNetRoles, ...).
         base.OnModelCreating(modelBuilder);
 
-        modelBuilder.Entity<User>(entity =>
-        {
-            entity.ToTable("Users");
-            entity.HasKey(u => u.UserId);
-
-            entity.Property(u => u.UserId).ValueGeneratedOnAdd();
-            entity.Property(u => u.Username).HasMaxLength(50).IsRequired();
-            entity.Property(u => u.PasswordHash).HasMaxLength(500).IsRequired();
-            entity.Property(u => u.FullName).HasMaxLength(150).IsRequired();
-            entity.Property(u => u.Role).HasMaxLength(20).IsRequired();
-            entity.Property(u => u.IsActive).IsRequired();
-            entity.Property(u => u.CreatedAt).IsRequired();
-            entity.Property(u => u.UpdatedAt);
-
-            entity.HasIndex(u => u.Username)
-                .IsUnique()
-                .HasDatabaseName("UQ_Users_Username");
-        });
-
+        // -----------------------------------------------------------------
+        // Academic tables: created by Database/StudentGradeManagementDB.sql.
+        // ExcludeFromMigrations: EF reads and writes them but never creates or alters them.
+        // -----------------------------------------------------------------
         modelBuilder.Entity<Student>(entity =>
         {
-            entity.ToTable("Students");
+            entity.ToTable("Students", table => table.ExcludeFromMigrations());
             entity.HasKey(s => s.StudentId);
 
             entity.Property(s => s.StudentId).ValueGeneratedOnAdd();
-            entity.Property(s => s.StudentNumber).HasMaxLength(20).IsRequired();
-            entity.Property(s => s.FirstName).HasMaxLength(50).IsRequired();
-            entity.Property(s => s.MiddleName).HasMaxLength(50);
-            entity.Property(s => s.LastName).HasMaxLength(50).IsRequired();
-            entity.Property(s => s.Email).HasMaxLength(150);
-            entity.Property(s => s.Course).HasMaxLength(100).IsRequired();
-            entity.Property(s => s.YearLevel).IsRequired();
-            entity.Property(s => s.CreatedAt).IsRequired();
-            entity.Property(s => s.UpdatedAt);
+            entity.Property(s => s.StudentNumber).HasMaxLength(30).IsRequired();
+            entity.Property(s => s.FirstName).HasMaxLength(100).IsRequired();
+            entity.Property(s => s.LastName).HasMaxLength(100).IsRequired();
+            entity.Property(s => s.Email).HasMaxLength(256).IsRequired();
+            entity.Property(s => s.IsActive).IsRequired();
 
             entity.Ignore(s => s.FullName);
-            entity.Ignore(s => s.ListName);
 
-            entity.HasIndex(s => s.StudentNumber)
-                .IsUnique()
-                .HasDatabaseName("UQ_Students_StudentNumber");
-
-            entity.HasIndex(s => s.UserId)
-                .IsUnique()
-                .HasDatabaseName("UX_Students_UserId")
-                .HasFilter("[UserId] IS NOT NULL");
-
-            entity.HasOne(s => s.User)
-                .WithOne(u => u.Student)
-                .HasForeignKey<Student>(s => s.UserId)
-                .OnDelete(DeleteBehavior.SetNull)
-                .HasConstraintName("FK_Students_Users");
+            entity.HasIndex(s => s.StudentNumber).IsUnique().HasDatabaseName("UQ_Students_StudentNumber");
+            entity.HasIndex(s => s.Email).IsUnique().HasDatabaseName("UQ_Students_Email");
         });
 
-        modelBuilder.Entity<Subject>(entity =>
+        modelBuilder.Entity<Faculty>(entity =>
         {
-            entity.ToTable("Subjects");
-            entity.HasKey(s => s.SubjectId);
+            entity.ToTable("Faculty", table => table.ExcludeFromMigrations());
+            entity.HasKey(f => f.FacultyId);
 
-            entity.Property(s => s.SubjectId).ValueGeneratedOnAdd();
-            entity.Property(s => s.SubjectCode).HasMaxLength(20).IsRequired();
-            entity.Property(s => s.SubjectName).HasMaxLength(150).IsRequired();
-            entity.Property(s => s.Units).IsRequired();
-            entity.Property(s => s.Description).HasMaxLength(500);
-            entity.Property(s => s.CreatedAt).IsRequired();
-            entity.Property(s => s.UpdatedAt);
+            entity.Property(f => f.FacultyId).ValueGeneratedOnAdd();
+            entity.Property(f => f.FacultyNumber).HasMaxLength(30).IsRequired();
+            entity.Property(f => f.FirstName).HasMaxLength(100).IsRequired();
+            entity.Property(f => f.LastName).HasMaxLength(100).IsRequired();
+            entity.Property(f => f.Email).HasMaxLength(256).IsRequired();
+            entity.Property(f => f.IsActive).IsRequired();
 
-            entity.HasIndex(s => s.SubjectCode)
-                .IsUnique()
-                .HasDatabaseName("UQ_Subjects_SubjectCode");
+            entity.Ignore(f => f.FullName);
+
+            entity.HasIndex(f => f.FacultyNumber).IsUnique().HasDatabaseName("UQ_Faculty_FacultyNumber");
+            entity.HasIndex(f => f.Email).IsUnique().HasDatabaseName("UQ_Faculty_Email");
         });
 
-        modelBuilder.Entity<GradeRecord>(entity =>
+        modelBuilder.Entity<StudentGrade>(entity =>
         {
-            entity.ToTable("GradeRecords");
-            entity.HasKey(g => g.GradeRecordId);
+            entity.ToTable("StudentGrades", table => table.ExcludeFromMigrations());
+            entity.HasKey(g => g.GradeId);
 
-            entity.Property(g => g.GradeRecordId).ValueGeneratedOnAdd();
-            entity.Property(g => g.SchoolYear).HasMaxLength(9).IsRequired();
-            entity.Property(g => g.Semester).HasMaxLength(20).IsRequired();
-            entity.Property(g => g.Prelim).HasColumnType("decimal(5,2)");
-            entity.Property(g => g.Midterm).HasColumnType("decimal(5,2)");
-            entity.Property(g => g.Finals).HasColumnType("decimal(5,2)");
-            entity.Property(g => g.FinalGrade).HasColumnType("decimal(5,2)");
-            entity.Property(g => g.Remarks).HasMaxLength(20).IsRequired();
-            entity.Property(g => g.CreatedAt).IsRequired();
-            entity.Property(g => g.UpdatedAt);
+            entity.Property(g => g.GradeId).ValueGeneratedOnAdd();
+            entity.Property(g => g.SubjectCode).HasMaxLength(30).IsRequired();
+            entity.Property(g => g.SubjectName).HasMaxLength(200).IsRequired();
+            entity.Property(g => g.Grade).IsRequired();
+            entity.Property(g => g.Remarks).HasMaxLength(30).IsRequired();
+            entity.Property(g => g.Semester).HasMaxLength(50).IsRequired();
+            entity.Property(g => g.SchoolYear).HasMaxLength(20).IsRequired();
+            entity.Property(g => g.DatePosted).HasColumnType("datetime2(0)").IsRequired();
+            entity.Property(g => g.DateModified).HasColumnType("datetime2(0)");
 
-            entity.HasIndex(g => new { g.StudentId, g.SubjectId, g.SchoolYear, g.Semester })
+            entity.HasIndex(g => new { g.StudentId, g.SubjectCode, g.Semester, g.SchoolYear })
                 .IsUnique()
-                .HasDatabaseName("UQ_GradeRecords_Student_Subject_Term");
-
-            entity.HasIndex(g => g.SubjectId)
-                .HasDatabaseName("IX_GradeRecords_SubjectId");
+                .HasDatabaseName("UQ_StudentGrades_StudentSubjectTerm");
 
             entity.HasOne(g => g.Student)
-                .WithMany(s => s.GradeRecords)
+                .WithMany(s => s.Grades)
                 .HasForeignKey(g => g.StudentId)
-                .OnDelete(DeleteBehavior.Cascade)
-                .HasConstraintName("FK_GradeRecords_Students");
-
-            entity.HasOne(g => g.Subject)
-                .WithMany(s => s.GradeRecords)
-                .HasForeignKey(g => g.SubjectId)
                 .OnDelete(DeleteBehavior.Restrict)
-                .HasConstraintName("FK_GradeRecords_Subjects");
+                .HasConstraintName("FK_StudentGrades_Students");
+
+            entity.HasOne(g => g.Faculty)
+                .WithMany(f => f.Grades)
+                .HasForeignKey(g => g.FacultyId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_StudentGrades_Faculty");
         });
 
-        // SQL Server datetime2 has no time zone. Everything is stored as UTC,
-        // so mark every DateTime read from the database as UTC.
+        // -----------------------------------------------------------------
+        // Identity account -> academic record mapping (created by the EF migration).
+        // -----------------------------------------------------------------
+        modelBuilder.Entity<ApplicationUser>(entity =>
+        {
+            entity.ToTable("AspNetUsers", table => table.HasCheckConstraint(
+                "CK_AspNetUsers_SingleAcademicRecord",
+                "[StudentId] IS NULL OR [FacultyId] IS NULL"));
+
+            entity.HasOne(u => u.Student)
+                .WithMany()
+                .HasForeignKey(u => u.StudentId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_AspNetUsers_Students");
+
+            entity.HasOne(u => u.Faculty)
+                .WithMany()
+                .HasForeignKey(u => u.FacultyId)
+                .OnDelete(DeleteBehavior.Restrict)
+                .HasConstraintName("FK_AspNetUsers_Faculty");
+
+            // One login per student record and one login per faculty record.
+            entity.HasIndex(u => u.StudentId)
+                .IsUnique()
+                .HasFilter("[StudentId] IS NOT NULL")
+                .HasDatabaseName("UX_AspNetUsers_StudentId");
+
+            entity.HasIndex(u => u.FacultyId)
+                .IsUnique()
+                .HasFilter("[FacultyId] IS NOT NULL")
+                .HasDatabaseName("UX_AspNetUsers_FacultyId");
+        });
+
+        // datetime2 has no time zone. Everything is stored as UTC, so mark values read back as UTC.
         var utcConverter = new ValueConverter<DateTime, DateTime>(
             value => value,
             value => DateTime.SpecifyKind(value, DateTimeKind.Utc));

@@ -4,13 +4,18 @@ public static class AppRoles
 {
     public const string Faculty = "Faculty";
     public const string Student = "Student";
+    public const string FacultyOrStudent = "Faculty,Student";
 }
 
+// The required grading scale. Only GradeCalculator assigns these values.
 public static class GradeRemarks
 {
-    public const string Passed = "Passed";
-    public const string Failed = "Failed";
-    public const string Incomplete = "Incomplete";
+    public const string Cms = "CMS";
+    public const string Sp = "SP";
+    public const string Sap = "SAP";
+    public const string Gp = "GP";
+    public const string Ep = "EP";
+    public const string Failed = "BEP/FAILED";
 }
 
 public static class Semesters
@@ -34,4 +39,5 @@ public static class AppClaimTypes
     public const string FullName = "fullName";
     public const string Role = "role";
     public const string StudentId = "studentId";
+    public const string FacultyId = "facultyId";
 }

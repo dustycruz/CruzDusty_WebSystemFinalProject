@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using System.Text;
 using CruzDusty_WebSystemFinalProject.Api.Data;
 using CruzDusty_WebSystemFinalProject.Api.Middleware;
@@ -25,16 +26,30 @@ if (string.IsNullOrWhiteSpace(connectionString))
     throw new InvalidOperationException("ConnectionStrings:DefaultConnection is missing from appsettings.json.");
 }
 
-var jwtSection = builder.Configuration.GetSection("Jwt");
-var jwtSettings = jwtSection.Get<JwtSettings>();
-if (jwtSettings is null || string.IsNullOrWhiteSpace(jwtSettings.Key))
-{
-    throw new InvalidOperationException("The 'Jwt' section is missing from appsettings.json.");
-}
+// Jwt:Key is a secret, so it is NOT in appsettings.json. Set it with:
+//   dotnet user-secrets set "Jwt:Key" "<at least 32 characters>"
+// If it is missing, a temporary random key is generated (tokens stop working after a restart).
+var jwtSettings = builder.Configuration.GetSection("Jwt").Get<JwtSettings>() ?? new JwtSettings();
+var usingGeneratedJwtKey = false;
 
-if (Encoding.UTF8.GetByteCount(jwtSettings.Key) < 32)
+if (string.IsNullOrWhiteSpace(jwtSettings.Key))
+{
+    jwtSettings.Key = Convert.ToBase64String(RandomNumberGenerator.GetBytes(48));
+    usingGeneratedJwtKey = true;
+}
+else if (Encoding.UTF8.GetByteCount(jwtSettings.Key) < 32)
 {
     throw new InvalidOperationException("Jwt:Key must be at least 32 characters long.");
+}
+
+if (string.IsNullOrWhiteSpace(jwtSettings.Issuer))
+{
+    jwtSettings.Issuer = "CruzDusty_WebSystemFinalProject.Api";
+}
+
+if (string.IsNullOrWhiteSpace(jwtSettings.Audience))
+{
+    jwtSettings.Audience = "CruzDusty_WebSystemFinalProject.Web";
 }
 
 var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
@@ -46,17 +61,40 @@ if (allowedOrigins is null || allowedOrigins.Length == 0)
 // ---------------------------------------------------------------------
 // Services
 // ---------------------------------------------------------------------
-builder.Services.Configure<JwtSettings>(jwtSection);
+builder.Services.Configure<JwtSettings>(options =>
+{
+    options.Key = jwtSettings.Key;
+    options.Issuer = jwtSettings.Issuer;
+    options.Audience = jwtSettings.Audience;
+    options.ExpiresMinutes = jwtSettings.ExpiresMinutes;
+});
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlServer(connectionString));
 
-builder.Services.AddSingleton<IPasswordHasher<User>, PasswordHasher<User>>();
+// ASP.NET Core Identity: hashed passwords, roles, lockout. No cookies: the API uses JWT.
+builder.Services
+    .AddIdentityCore<ApplicationUser>(options =>
+    {
+        options.Password.RequiredLength = 8;
+        options.Password.RequireDigit = true;
+        options.Password.RequireLowercase = true;
+        options.Password.RequireUppercase = true;
+        options.Password.RequireNonAlphanumeric = true;
+
+        options.Lockout.MaxFailedAccessAttempts = 5;
+        options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(5);
+        options.Lockout.AllowedForNewUsers = true;
+
+        options.User.RequireUniqueEmail = false;
+    })
+    .AddRoles<IdentityRole>()
+    .AddEntityFrameworkStores<AppDbContext>();
+
 builder.Services.AddSingleton<IGradeCalculator, GradeCalculator>();
 builder.Services.AddSingleton<ITokenService, TokenService>();
 builder.Services.AddScoped<IAuthService, AuthService>();
 builder.Services.AddScoped<IStudentService, StudentService>();
-builder.Services.AddScoped<ISubjectService, SubjectService>();
 builder.Services.AddScoped<IGradeService, GradeService>();
 
 builder.Services
@@ -68,34 +106,44 @@ builder.Services
     })
     .ConfigureApiBehaviorOptions(options =>
     {
-        // Replace the default validation response with { message, statusCode, errors }.
+        // Every validation failure becomes { message, statusCode, errors }.
         options.InvalidModelStateResponseFactory = context =>
         {
-            var errors = context.ModelState
+            var parameterNames = new HashSet<string>(
+                context.ActionDescriptor.Parameters.Select(parameter => parameter.Name),
+                StringComparer.OrdinalIgnoreCase);
+
+            var entries = context.ModelState
                 .Where(entry => entry.Value is not null && entry.Value.Errors.Count > 0)
-                .GroupBy(entry => NormalizeKey(entry.Key))
+                .ToList();
+
+            // When a field failed (for example $.grade), drop the generic
+            // "The dto field is required." entry that ASP.NET Core adds next to it.
+            var fieldEntries = entries.Where(entry => !parameterNames.Contains(entry.Key)).ToList();
+            if (fieldEntries.Count > 0)
+            {
+                entries = fieldEntries;
+            }
+
+            var errors = entries
+                .GroupBy(entry => parameterNames.Contains(entry.Key) ? "request" : NormalizeKey(entry.Key))
                 .ToDictionary(
                     group => group.Key,
                     group => group
                         .SelectMany(entry => entry.Value!.Errors)
-                        .Select(error => string.IsNullOrWhiteSpace(error.ErrorMessage)
-                            ? $"The value for '{group.Key}' is not valid."
-                            : error.ErrorMessage)
+                        .Select(error => FriendlyMessage(group.Key, error.ErrorMessage))
                         .Distinct()
                         .ToArray());
 
-            var firstMessage = errors.Values
-                .SelectMany(messages => messages)
-                .FirstOrDefault() ?? "The request is not valid.";
+            var firstMessage = errors.Values.SelectMany(messages => messages).FirstOrDefault()
+                ?? "The request is not valid.";
 
-            var body = new ErrorResponseDto
+            return new BadRequestObjectResult(new ErrorResponseDto
             {
                 Message = firstMessage,
                 StatusCode = StatusCodes.Status400BadRequest,
                 Errors = errors
-            };
-
-            return new BadRequestObjectResult(body);
+            });
         };
     });
 
@@ -107,7 +155,7 @@ builder.Services
     })
     .AddJwtBearer(options =>
     {
-        // Keep the claim names exactly as they are written in the token ("role", "studentId").
+        // Keep claim names exactly as written in the token ("role", "studentId", "facultyId").
         options.MapInboundClaims = false;
         options.SaveToken = false;
 
@@ -127,7 +175,7 @@ builder.Services
 
         options.Events = new JwtBearerEvents
         {
-            // 401: no token, bad token or expired token.
+            // 401: no token, invalid token or expired token.
             OnChallenge = async context =>
             {
                 context.HandleResponse();
@@ -186,6 +234,13 @@ builder.Services.AddCors(options =>
 // ---------------------------------------------------------------------
 var app = builder.Build();
 
+if (usingGeneratedJwtKey)
+{
+    app.Logger.LogWarning(
+        "Jwt:Key is not configured, so a temporary signing key was generated. Tokens stop working " +
+        "when the API restarts. Set a key with: dotnet user-secrets set \"Jwt:Key\" \"<32+ characters>\"");
+}
+
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
 app.UseHttpsRedirection();
@@ -208,23 +263,24 @@ app.MapFallback(async context =>
 });
 
 // ---------------------------------------------------------------------
-// Seed login accounts and sample grades
+// Apply Identity migrations; create demo accounts in Development only
 // ---------------------------------------------------------------------
 try
 {
-    await DbSeeder.SeedAsync(app.Services);
+    await DbSeeder.InitializeAsync(app.Services, seedDemoAccounts: app.Environment.IsDevelopment());
 }
 catch (Exception ex)
 {
     app.Logger.LogCritical(
         ex,
-        "Database seeding failed. Run Database/CruzDusty_WebSystemFinalProject.sql and check the connection string.");
+        "Database initialization failed. Run Database/StudentGradeManagementDB.sql, create the EF migration, " +
+        "and check the connection string.");
     throw;
 }
 
 app.Run();
 
-// "$.prelim" -> "prelim", "StudentNumber" -> "studentNumber", "" -> "request"
+// "$.grade" -> "grade", "SubjectCode" -> "subjectCode", "" or "$" -> "request"
 static string NormalizeKey(string key)
 {
     if (string.IsNullOrWhiteSpace(key) || key == "$")
@@ -240,4 +296,31 @@ static string NormalizeKey(string key)
     }
 
     return char.ToLowerInvariant(name[0]) + name.Substring(1);
+}
+
+// Replaces framework-generated parsing messages with plain sentences.
+static string FriendlyMessage(string field, string message)
+{
+    if (field == "request")
+    {
+        return "The request body is missing or is not valid JSON.";
+    }
+
+    var isTechnical =
+        string.IsNullOrWhiteSpace(message) ||
+        message.Contains("JSON", StringComparison.OrdinalIgnoreCase) ||
+        message.Contains("could not be converted", StringComparison.OrdinalIgnoreCase) ||
+        message.StartsWith("The input was not valid", StringComparison.OrdinalIgnoreCase);
+
+    if (!isTechnical)
+    {
+        return message;
+    }
+
+    return field switch
+    {
+        "grade" => "Grade must be a whole number from 0 to 100.",
+        "studentId" => "Student must be a valid student id.",
+        _ => $"The value for '{field}' is not valid."
+    };
 }

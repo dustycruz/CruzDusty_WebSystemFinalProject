@@ -6,49 +6,43 @@ namespace CruzDusty_WebSystemFinalProject.Api.Services.Implementations;
 
 public class GradeCalculator : IGradeCalculator
 {
-    public const decimal PrelimWeight = 0.30m;
-    public const decimal MidtermWeight = 0.30m;
-    public const decimal FinalsWeight = 0.40m;
-    public const decimal PassingGrade = 75m;
-    public const decimal MinimumScore = 0m;
-    public const decimal MaximumScore = 100m;
+    public const int MinimumGrade = 0;
+    public const int MaximumGrade = 100;
 
-    public GradeComputation Compute(decimal? prelim, decimal? midterm, decimal? finals)
+    //  95-100 CMS | 90-94 SP | 85-89 SAP | 80-84 GP | 75-79 EP | 0-74 BEP/FAILED
+    public string ComputeRemarks(int grade)
     {
-        ValidateScore(prelim, "Prelim");
-        ValidateScore(midterm, "Midterm");
-        ValidateScore(finals, "Finals");
-
-        // Any missing score: the grade is Incomplete and FinalGrade stays null.
-        if (prelim is null || midterm is null || finals is null)
+        // Validated here as well, so the rule holds for every caller, not only HTTP requests.
+        if (grade < MinimumGrade || grade > MaximumGrade)
         {
-            return new GradeComputation(null, GradeRemarks.Incomplete);
+            throw ApiException.BadRequest("Grade must be a whole number from 0 to 100.");
         }
 
-        var weighted =
-            (prelim.Value * PrelimWeight) +
-            (midterm.Value * MidtermWeight) +
-            (finals.Value * FinalsWeight);
-
-        var finalGrade = Math.Round(weighted, 2, MidpointRounding.AwayFromZero);
-
-        var remarks = finalGrade >= PassingGrade
-            ? GradeRemarks.Passed
-            : GradeRemarks.Failed;
-
-        return new GradeComputation(finalGrade, remarks);
-    }
-
-    private static void ValidateScore(decimal? score, string name)
-    {
-        if (score is null)
+        if (grade >= 95)
         {
-            return;
+            return GradeRemarks.Cms;
         }
 
-        if (score.Value < MinimumScore || score.Value > MaximumScore)
+        if (grade >= 90)
         {
-            throw ApiException.BadRequest($"{name} must be between 0 and 100.");
+            return GradeRemarks.Sp;
         }
+
+        if (grade >= 85)
+        {
+            return GradeRemarks.Sap;
+        }
+
+        if (grade >= 80)
+        {
+            return GradeRemarks.Gp;
+        }
+
+        if (grade >= 75)
+        {
+            return GradeRemarks.Ep;
+        }
+
+        return GradeRemarks.Failed;
     }
 }

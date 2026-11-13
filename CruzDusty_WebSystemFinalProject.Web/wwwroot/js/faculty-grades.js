@@ -8,13 +8,16 @@
 
     const esc = UI.escapeHtml;
     const SCHOOL_YEAR_PATTERN = /^(\d{4})-(\d{4})$/;
+    const SUBJECT_CODE_PATTERN = /^[A-Za-z0-9 -]{2,30}$/;
+    const WHOLE_NUMBER_PATTERN = /^\d{1,3}$/;
+    const GRADE_MESSAGE = 'Grade must be a whole number from 0 to 100.';
     const PREVIEW_IDLE_TEXT =
-        'Enter scores to see a preview. This is a preview only: the saved value is always recomputed by the server.';
+        'Enter a grade to see a preview. The saved remark is always recomputed by the server.';
 
     const filterStudent = document.getElementById('filter-student');
     const filterSubject = document.getElementById('filter-subject');
-    const filterSchoolYear = document.getElementById('filter-school-year');
     const filterSemester = document.getElementById('filter-semester');
+    const filterSchoolYear = document.getElementById('filter-school-year');
     const clearFiltersButton = document.getElementById('btn-clear-filters');
     const searchInput = document.getElementById('grade-search');
     const countLabel = document.getElementById('grades-count');
@@ -29,19 +32,16 @@
     const saveButton = document.getElementById('grade-save');
 
     const studentSelect = document.getElementById('grade-student');
-    const subjectSelect = document.getElementById('grade-subject');
+    const subjectCodeInput = document.getElementById('grade-subject-code');
+    const subjectCodeOptions = document.getElementById('subject-code-options');
+    const subjectNameInput = document.getElementById('grade-subject-name');
+    const gradeInput = document.getElementById('grade-value');
+    const semesterSelect = document.getElementById('grade-semester');
     const schoolYearInput = document.getElementById('grade-school-year');
     const schoolYearOptions = document.getElementById('school-year-options');
-    const semesterSelect = document.getElementById('grade-semester');
-    const scoreInputs = {
-        prelim: document.getElementById('grade-prelim'),
-        midterm: document.getElementById('grade-midterm'),
-        finals: document.getElementById('grade-finals')
-    };
-    const SCORE_LABELS = { prelim: 'Prelim', midterm: 'Midterm', finals: 'Finals' };
 
     const previewBox = document.getElementById('grade-preview');
-    const previewFinal = document.getElementById('preview-final');
+    const previewGrade = document.getElementById('preview-grade');
     const previewRemarks = document.getElementById('preview-remarks');
     const previewStatus = document.getElementById('preview-status');
 
@@ -51,8 +51,8 @@
     const viewEditButton = document.getElementById('grade-view-edit');
 
     let students = [];
-    let subjects = [];
     let grades = [];
+    const knownSubjects = new Map();
     let currentSearch = '';
     let editingId = null;
     let viewingGrade = null;
@@ -95,23 +95,80 @@
     }
 
     // ------------------------------------------------------------------
+    // Subjects: the exam schema stores code and name on each grade,
+    // so the known subjects are collected from the loaded grade records.
+    // ------------------------------------------------------------------
+    function rememberSubjects(list) {
+        list.forEach(grade => {
+            if (!knownSubjects.has(grade.subjectCode)) {
+                knownSubjects.set(grade.subjectCode, grade.subjectName);
+            }
+        });
+    }
+
+    function fillSubjects() {
+        const codes = Array.from(knownSubjects.keys()).sort();
+        const selected = filterSubject.value;
+
+        filterSubject.innerHTML = '<option value="">All subjects</option>' +
+            codes.map(code => `<option value="${esc(code)}">${esc(code)} - ${esc(knownSubjects.get(code))}</option>`).join('');
+        if (selected && codes.includes(selected)) {
+            filterSubject.value = selected;
+        }
+
+        subjectCodeOptions.innerHTML = codes
+            .map(code => `<option value="${esc(code)}">${esc(knownSubjects.get(code))}</option>`)
+            .join('');
+    }
+
+    // ------------------------------------------------------------------
+    // Students
+    // ------------------------------------------------------------------
+    function studentLabel(student) {
+        return `${student.fullName} (${student.studentNumber})`;
+    }
+
+    function fillStudentFilter() {
+        const selected = filterStudent.value;
+        filterStudent.innerHTML = '<option value="">All students</option>' +
+            students.map(student => `<option value="${student.studentId}">${esc(studentLabel(student))}</option>`).join('');
+        if (selected) {
+            filterStudent.value = selected;
+        }
+    }
+
+    // Only active students can receive new grades; an inactive student stays selectable
+    // when editing a grade that already belongs to them.
+    function fillStudentSelect(includeStudentId) {
+        const options = students.filter(student => student.isActive || student.studentId === includeStudentId);
+        studentSelect.innerHTML = '<option value="">Select a student</option>' +
+            options.map(student =>
+                `<option value="${student.studentId}">${esc(studentLabel(student))}${student.isActive ? '' : ' (inactive)'}</option>`)
+                .join('');
+    }
+
+    async function loadStudents() {
+        students = await Api.get('/api/students');
+        fillStudentFilter();
+        fillStudentSelect(null);
+    }
+
+    // ------------------------------------------------------------------
     // Table
     // ------------------------------------------------------------------
     function renderRow(grade) {
-        const id = grade.gradeRecordId;
+        const id = grade.gradeId;
         const justSaved = id === lastSavedId;
         const label = `${esc(grade.subjectCode)} for ${esc(grade.studentName)}`;
 
         return `<tr data-id="${id}"${justSaved ? ' class="row-selected"' : ''}>` +
             `<td><span class="cell-main">${esc(grade.studentName)}</span><span class="cell-sub">${esc(grade.studentNumber)}</span></td>` +
             `<td><span class="code-chip">${esc(grade.subjectCode)}</span><span class="cell-sub">${esc(grade.subjectName)}</span></td>` +
-            `<td>${esc(grade.schoolYear)}</td>` +
-            `<td>${esc(grade.semester)}</td>` +
-            `<td class="col-num">${UI.formatScore(grade.prelim)}</td>` +
-            `<td class="col-num">${UI.formatScore(grade.midterm)}</td>` +
-            `<td class="col-num">${UI.formatScore(grade.finals)}</td>` +
-            `<td class="col-num"><strong>${UI.formatScore(grade.finalGrade)}</strong></td>` +
+            `<td class="col-num"><strong>${Number(grade.grade)}</strong></td>` +
             `<td>${UI.remarksBadge(grade.remarks, justSaved)}</td>` +
+            `<td>${esc(grade.semester)}</td>` +
+            `<td>${esc(grade.schoolYear)}</td>` +
+            `<td>${esc(grade.facultyName)}</td>` +
             `<td class="col-actions"><div class="row-actions">` +
             `<button type="button" class="action-btn" data-action="view" data-id="${id}" data-bs-toggle="tooltip" title="View details" aria-label="View ${label}"><i class="bi bi-eye" aria-hidden="true"></i></button>` +
             `<button type="button" class="action-btn" data-action="edit" data-id="${id}" data-bs-toggle="tooltip" title="Edit" aria-label="Edit ${label}"><i class="bi bi-pencil-square" aria-hidden="true"></i></button>` +
@@ -120,21 +177,21 @@
     }
 
     function hasActiveFilters() {
-        return Boolean(filterStudent.value || filterSubject.value || filterSchoolYear.value ||
-            filterSemester.value || currentSearch);
+        return Boolean(filterStudent.value || filterSubject.value || filterSemester.value ||
+            filterSchoolYear.value || currentSearch);
     }
 
     function emptyHtml() {
         if (hasActiveFilters()) {
             return UI.emptyStateHtml({
-                title: 'No grade records match these filters',
+                title: 'No grades match these filters',
                 text: 'Change or clear the filters to see more records.'
             });
         }
         return UI.emptyStateHtml({
-            title: 'No grade records yet',
-            text: 'Add the first one.',
-            actionLabel: 'Add Grade Record'
+            title: 'No grades posted yet',
+            text: 'Post the first one.',
+            actionLabel: 'Add Grade'
         });
     }
 
@@ -146,7 +203,7 @@
         renderRow: renderRow,
         emptyHtml: emptyHtml,
         onEmptyAction: openCreate,
-        onRetry: loadGrades
+        onRetry: () => (students.length > 0 ? loadGrades() : start())
     });
 
     function applySearch() {
@@ -154,7 +211,7 @@
         const filtered = term
             ? grades.filter(grade => [
                 grade.studentName, grade.studentNumber, grade.subjectCode, grade.subjectName,
-                grade.schoolYear, grade.semester, grade.remarks
+                grade.remarks, grade.semester, grade.schoolYear, grade.facultyName, String(grade.grade)
             ].some(value => String(value).toLowerCase().includes(term)))
             : grades;
 
@@ -165,7 +222,7 @@
             : `${grades.length} record${grades.length === 1 ? '' : 's'}`;
     }
 
-    // Filtering by student, subject, school year and semester is done by the API.
+    // Filtering by student, subject, semester and school year is done by the API.
     async function loadGrades() {
         const sequence = ++loadSequence;
         table.showSkeleton(6);
@@ -173,21 +230,23 @@
         try {
             const result = await Api.get('/api/grades', {
                 studentId: filterStudent.value,
-                subjectId: filterSubject.value,
-                schoolYear: filterSchoolYear.value,
-                semester: filterSemester.value
+                subjectCode: filterSubject.value,
+                semester: filterSemester.value,
+                schoolYear: filterSchoolYear.value
             });
             if (sequence !== loadSequence) {
                 return;
             }
 
             grades = result;
+            rememberSubjects(grades);
+            fillSubjects();
             fillSchoolYears();
             applySearch();
 
             if (lastSavedId !== null) {
                 const savedId = lastSavedId;
-                table.showRow(row => row.gradeRecordId === savedId);
+                table.showRow(row => row.gradeId === savedId);
                 lastSavedId = null;
             }
         } catch (error) {
@@ -201,75 +260,34 @@
     }
 
     // ------------------------------------------------------------------
-    // Lookups for the dropdowns
+    // Grade input and the server-computed preview
     // ------------------------------------------------------------------
-    function fillSelect(select, items, valueKey, labelOf, placeholder) {
-        const selected = select.value;
-        select.innerHTML = `<option value="">${esc(placeholder)}</option>` +
-            items.map(item => `<option value="${item[valueKey]}">${esc(labelOf(item))}</option>`).join('');
-        if (selected) {
-            select.value = selected;
-        }
-    }
-
-    async function loadLookups() {
-        const [studentList, subjectList] = await Promise.all([
-            Api.get('/api/students'),
-            Api.get('/api/subjects')
-        ]);
-
-        students = studentList;
-        subjects = subjectList;
-
-        const studentLabel = student => `${student.fullName} (${student.studentNumber})`;
-        const subjectLabel = subject => `${subject.subjectCode} - ${subject.subjectName}`;
-
-        fillSelect(filterStudent, students, 'studentId', studentLabel, 'All students');
-        fillSelect(studentSelect, students, 'studentId', studentLabel, 'Select a student');
-        fillSelect(filterSubject, subjects, 'subjectId', subjectLabel, 'All subjects');
-        fillSelect(subjectSelect, subjects, 'subjectId', subjectLabel, 'Select a subject');
-    }
-
-    // ------------------------------------------------------------------
-    // Scores and the server-computed preview
-    // ------------------------------------------------------------------
-    function readScore(name) {
-        const input = scoreInputs[name];
-        const label = SCORE_LABELS[name];
-        const raw = input.value.trim();
+    function readGrade() {
+        const raw = gradeInput.value.trim();
 
         if (raw === '') {
-            if (input.validity && input.validity.badInput) {
-                return { value: null, error: `${label} must be a number.` };
+            // A number input reports "" for text it cannot parse, such as "12e".
+            if (gradeInput.validity && gradeInput.validity.badInput) {
+                return { value: null, error: GRADE_MESSAGE };
             }
             return { value: null, error: null };
         }
 
-        const number = Number(raw);
-        if (!Number.isFinite(number)) {
-            return { value: null, error: `${label} must be a number.` };
+        // Digits only: rejects 85.5, -1, 1e2 and similar.
+        if (!WHOLE_NUMBER_PATTERN.test(raw)) {
+            return { value: null, error: GRADE_MESSAGE };
         }
-        if (number < 0 || number > 100) {
-            return { value: number, error: `${label} must be between 0 and 100.` };
+
+        const value = Number(raw);
+        if (value > 100) {
+            return { value: value, error: GRADE_MESSAGE };
         }
-        return { value: Math.round(number * 100) / 100, error: null };
+
+        return { value: value, error: null };
     }
 
-    function readScores() {
-        const values = {};
-        const errors = {};
-        Object.keys(scoreInputs).forEach(name => {
-            const result = readScore(name);
-            values[name] = result.value;
-            if (result.error) {
-                errors[name] = result.error;
-            }
-        });
-        return { values: values, errors: errors };
-    }
-
-    function setPreview(finalText, remarksHtml, statusText) {
-        previewFinal.textContent = finalText;
+    function setPreview(gradeText, remarksHtml, statusText) {
+        previewGrade.textContent = gradeText;
         previewRemarks.innerHTML = remarksHtml;
         previewStatus.textContent = statusText;
     }
@@ -281,38 +299,39 @@
     }
 
     async function requestPreview() {
-        const { values, errors } = readScores();
+        const { value, error } = readGrade();
 
-        if (Object.keys(errors).length > 0) {
+        if (error) {
             previewSequence += 1;
             previewBox.classList.remove('is-loading');
-            setPreview('--', '--', 'Fix the highlighted scores to see a preview.');
+            UI.setFieldError(form, 'grade', error);
+            setPreview('--', '--', 'Fix the grade to see a preview.');
             return;
         }
 
-        if (values.prelim === null && values.midterm === null && values.finals === null) {
+        if (value === null) {
             resetPreview();
             return;
         }
 
         const sequence = ++previewSequence;
         previewBox.classList.add('is-loading');
-        previewStatus.textContent = 'Asking the server to compute the preview.';
+        previewStatus.textContent = 'Asking the server to compute the remark.';
 
         try {
-            const result = await Api.post('/api/grades/preview', values);
+            const result = await Api.post('/api/grades/preview', { grade: value });
             if (sequence !== previewSequence) {
                 return;
             }
             setPreview(
-                UI.formatScore(result.finalGrade),
+                String(result.grade),
                 UI.remarksBadge(result.remarks, true),
-                'Preview computed by the server. The saved value is recomputed by the server when you save.');
-        } catch (error) {
+                'Preview computed by the server. The saved remark is recomputed by the server when you save.');
+        } catch (previewError) {
             if (sequence !== previewSequence) {
                 return;
             }
-            setPreview('--', '--', error.message || 'The preview is not available right now.');
+            setPreview('--', '--', previewError.message || 'The preview is not available right now.');
         } finally {
             if (sequence === previewSequence) {
                 previewBox.classList.remove('is-loading');
@@ -320,16 +339,16 @@
         }
     }
 
-    const requestPreviewDebounced = UI.debounce(requestPreview, 400);
+    // The field error is set inside requestPreview, after the debounce, so the
+    // live-validation handler (which clears errors on every keystroke) does not hide it.
+    gradeInput.addEventListener('input', UI.debounce(requestPreview, 400));
 
-    Object.keys(scoreInputs).forEach(name => {
-        scoreInputs[name].addEventListener('input', () => {
-            const result = readScore(name);
-            if (result.error) {
-                UI.setFieldError(form, name, result.error);
-            }
-            requestPreviewDebounced();
-        });
+    subjectCodeInput.addEventListener('change', () => {
+        const code = subjectCodeInput.value.trim().toUpperCase();
+        subjectCodeInput.value = code;
+        if (knownSubjects.has(code) && !subjectNameInput.value.trim()) {
+            subjectNameInput.value = knownSubjects.get(code);
+        }
     });
 
     // ------------------------------------------------------------------
@@ -344,56 +363,78 @@
     }
 
     function openCreate() {
-        if (students.length === 0 || subjects.length === 0) {
-            UI.toast('Add at least one student and one subject before recording grades.', 'info');
+        if (!students.some(student => student.isActive)) {
+            UI.toast('There are no active students to grade.', 'info');
             return;
         }
 
         editingId = null;
         resetForm();
-        modalTitle.textContent = 'Add Grade Record';
+        fillStudentSelect(null);
+
+        modalTitle.textContent = 'Add Grade';
         studentSelect.value = filterStudent.value;
-        subjectSelect.value = filterSubject.value;
-        schoolYearInput.value = filterSchoolYear.value || defaultSchoolYear();
+        subjectCodeInput.value = filterSubject.value;
+        subjectNameInput.value = filterSubject.value ? (knownSubjects.get(filterSubject.value) || '') : '';
         semesterSelect.value = filterSemester.value;
+        schoolYearInput.value = filterSchoolYear.value || defaultSchoolYear();
+
         modal.show();
     }
 
     function openEdit(grade) {
-        editingId = grade.gradeRecordId;
+        editingId = grade.gradeId;
         resetForm();
-        modalTitle.textContent = 'Edit Grade Record';
+        fillStudentSelect(grade.studentId);
+
+        modalTitle.textContent = 'Edit Grade';
         studentSelect.value = String(grade.studentId);
-        subjectSelect.value = String(grade.subjectId);
-        schoolYearInput.value = grade.schoolYear;
+        subjectCodeInput.value = grade.subjectCode;
+        subjectNameInput.value = grade.subjectName;
+        gradeInput.value = String(grade.grade);
         semesterSelect.value = grade.semester;
-        scoreInputs.prelim.value = grade.prelim === null ? '' : String(grade.prelim);
-        scoreInputs.midterm.value = grade.midterm === null ? '' : String(grade.midterm);
-        scoreInputs.finals.value = grade.finals === null ? '' : String(grade.finals);
+        schoolYearInput.value = grade.schoolYear;
+
         modal.show();
         requestPreview();
     }
 
     function collect() {
-        const scores = readScores();
-        const errors = Object.assign({}, scores.errors);
+        const errors = {};
+        const gradeResult = readGrade();
 
-        // There is no finalGrade and no remarks here: the server computes both.
+        // There is no remarks, facultyId or date here: the server sets all of them.
         const payload = {
             studentId: Number(studentSelect.value) || 0,
-            subjectId: Number(subjectSelect.value) || 0,
-            schoolYear: schoolYearInput.value.trim(),
+            subjectCode: subjectCodeInput.value.trim().toUpperCase(),
+            subjectName: subjectNameInput.value.trim(),
+            grade: gradeResult.value,
             semester: semesterSelect.value,
-            prelim: scores.values.prelim,
-            midterm: scores.values.midterm,
-            finals: scores.values.finals
+            schoolYear: schoolYearInput.value.trim()
         };
 
         if (!payload.studentId) {
             errors.studentId = 'Select a student.';
         }
-        if (!payload.subjectId) {
-            errors.subjectId = 'Select a subject.';
+
+        if (!payload.subjectCode) {
+            errors.subjectCode = 'Subject code is required.';
+        } else if (!SUBJECT_CODE_PATTERN.test(payload.subjectCode)) {
+            errors.subjectCode = 'Use 2 to 30 letters, numbers, spaces or hyphens.';
+        }
+
+        if (!payload.subjectName) {
+            errors.subjectName = 'Subject name is required.';
+        }
+
+        if (gradeResult.error) {
+            errors.grade = gradeResult.error;
+        } else if (payload.grade === null) {
+            errors.grade = 'Grade is required.';
+        }
+
+        if (!payload.semester) {
+            errors.semester = 'Select a semester.';
         }
 
         const match = SCHOOL_YEAR_PATTERN.exec(payload.schoolYear);
@@ -403,10 +444,6 @@
             errors.schoolYear = 'School year must look like 2026-2027.';
         } else if (Number(match[2]) !== Number(match[1]) + 1) {
             errors.schoolYear = 'Use two consecutive years, for example 2026-2027.';
-        }
-
-        if (!payload.semester) {
-            errors.semester = 'Select a semester.';
         }
 
         return { payload: payload, errors: errors };
@@ -431,14 +468,11 @@
                 ? await Api.put(`/api/grades/${editingId}`, payload)
                 : await Api.post('/api/grades', payload);
 
-            lastSavedId = saved.gradeRecordId;
+            lastSavedId = saved.gradeId;
             modal.hide();
 
-            const result = saved.finalGrade === null
-                ? `Remarks: ${saved.remarks}`
-                : `Final grade ${UI.formatScore(saved.finalGrade)}, ${saved.remarks}`;
             UI.toast(
-                `Grade record ${isEdit ? 'updated' : 'added'}. ${result} (computed by the server).`,
+                `Grade ${isEdit ? 'updated' : 'posted'}: ${saved.grade} is ${saved.remarks} (remark computed by the server).`,
                 'success');
 
             await loadGrades();
@@ -453,7 +487,7 @@
     UI.bindLiveValidation(form);
 
     // ------------------------------------------------------------------
-    // View details
+    // View details (GET /api/grades/{id})
     // ------------------------------------------------------------------
     async function openView(grade) {
         viewingGrade = grade;
@@ -464,26 +498,24 @@
         viewModal.show();
 
         try {
-            const fresh = await Api.get(`/api/grades/${grade.gradeRecordId}`);
+            const fresh = await Api.get(`/api/grades/${grade.gradeId}`);
             viewingGrade = fresh;
 
             viewBody.innerHTML = UI.detailListHtml([
+                ['Grade ID', String(fresh.gradeId)],
                 ['Student', `${esc(fresh.studentName)} <span class="cell-sub">${esc(fresh.studentNumber)}</span>`],
                 ['Subject', `<span class="code-chip">${esc(fresh.subjectCode)}</span> <span class="cell-sub">${esc(fresh.subjectName)}</span>`],
-                ['Units', String(fresh.units)],
-                ['School year', esc(fresh.schoolYear)],
-                ['Semester', esc(fresh.semester)],
-                ['Prelim (30%)', UI.formatScore(fresh.prelim)],
-                ['Midterm (30%)', UI.formatScore(fresh.midterm)],
-                ['Finals (40%)', UI.formatScore(fresh.finals)],
-                ['Final grade', UI.formatScore(fresh.finalGrade)],
+                ['Grade', String(fresh.grade)],
                 ['Remarks', UI.remarksBadge(fresh.remarks)],
-                ['Created', esc(UI.formatDateTime(fresh.createdAt))],
-                ['Last updated', esc(UI.formatDateTime(fresh.updatedAt))]
+                ['Semester', esc(fresh.semester)],
+                ['School year', esc(fresh.schoolYear)],
+                ['Posted by', esc(fresh.facultyName)],
+                ['Date posted', esc(UI.formatDateTime(fresh.datePosted))],
+                ['Date modified', esc(UI.formatDateTime(fresh.dateModified))]
             ]);
         } catch (error) {
             viewModal.hide();
-            UI.toastError(error, 'Could not load the grade record.');
+            UI.toastError(error, 'Could not load the grade.');
             if (error.status === 404) {
                 loadGrades();
             }
@@ -500,14 +532,14 @@
     });
 
     // ------------------------------------------------------------------
-    // Delete
+    // Delete (always confirmed first)
     // ------------------------------------------------------------------
     async function remove(grade, button) {
         const confirmed = await UI.confirm({
-            title: 'Delete grade record?',
-            message: `${grade.subjectCode} for ${grade.studentName} (${grade.schoolYear}, ${grade.semester}) ` +
-                'will be removed. This cannot be undone.',
-            confirmText: 'Delete record'
+            title: 'Delete this grade?',
+            message: `${grade.subjectCode} (${grade.grade}, ${grade.remarks}) for ${grade.studentName}, ` +
+                `${grade.semester} ${grade.schoolYear}, will be permanently removed.`,
+            confirmText: 'Delete grade'
         });
         if (!confirmed) {
             return;
@@ -518,14 +550,14 @@
         }
 
         try {
-            await Api.del(`/api/grades/${grade.gradeRecordId}`);
-            UI.toast('The grade record was deleted.', 'success');
+            await Api.del(`/api/grades/${grade.gradeId}`);
+            UI.toast('The grade was deleted.', 'success');
             await loadGrades();
         } catch (error) {
             if (button) {
                 button.disabled = false;
             }
-            UI.toastError(error, 'Could not delete the grade record.');
+            UI.toastError(error, 'Could not delete the grade.');
             if (error.status === 404) {
                 loadGrades();
             }
@@ -540,7 +572,7 @@
         if (!button) {
             return;
         }
-        const grade = grades.find(item => item.gradeRecordId === Number(button.dataset.id));
+        const grade = grades.find(item => item.gradeId === Number(button.dataset.id));
         if (!grade) {
             return;
         }
@@ -556,15 +588,15 @@
 
     addButton.addEventListener('click', openCreate);
 
-    [filterStudent, filterSubject, filterSchoolYear, filterSemester].forEach(select => {
+    [filterStudent, filterSubject, filterSemester, filterSchoolYear].forEach(select => {
         select.addEventListener('change', loadGrades);
     });
 
     clearFiltersButton.addEventListener('click', () => {
         filterStudent.value = '';
         filterSubject.value = '';
-        filterSchoolYear.value = '';
         filterSemester.value = '';
+        filterSchoolYear.value = '';
         searchInput.value = '';
         currentSearch = '';
         loadGrades();
@@ -584,14 +616,14 @@
         fillSchoolYears();
 
         try {
-            await loadLookups();
+            await loadStudents();
         } catch (error) {
             table.showError(error.message);
-            UI.toastError(error, 'Could not load students and subjects.');
+            UI.toastError(error, 'Could not load the student list.');
             return;
         }
 
-        // Arriving from "View grades" on the Students page: /Faculty/Grades?studentId=5
+        // Optional deep link: /Faculty/Grades?studentId=1
         const requestedStudent = new URLSearchParams(window.location.search).get('studentId');
         if (requestedStudent && students.some(student => String(student.studentId) === requestedStudent)) {
             filterStudent.value = requestedStudent;

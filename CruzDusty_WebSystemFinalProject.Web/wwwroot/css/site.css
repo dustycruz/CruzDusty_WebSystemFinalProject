@@ -1239,20 +1239,30 @@ th[aria-sort="descending"] .sort-icon {
 }
 
 /* Remarks pills */
-.remark-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: .35rem;
-    padding: .25rem .7rem;
-    border-radius: 999px;
-    font-size: .78rem;
-    font-weight: 700;
-    white-space: nowrap;
+/* Required grading scale: CMS, SP, SAP, GP, EP, BEP/FAILED */
+.remark-cms {
+    background: var(--ac-gold-gradient);
+    color: var(--ac-ink);
 }
 
-.remark-passed {
+.remark-sp {
     background: var(--success-strong);
     color: var(--ac-white);
+}
+
+.remark-sap {
+    background: var(--ac-blue-dark);
+    color: var(--ac-white);
+}
+
+.remark-gp {
+    background: var(--ac-blue-light);
+    color: var(--ac-blue-dark);
+}
+
+.remark-ep {
+    background: var(--ac-sun);
+    color: var(--ac-ink);
 }
 
 .remark-failed {
@@ -1260,9 +1270,9 @@ th[aria-sort="descending"] .sort-icon {
     color: var(--ac-white);
 }
 
-.remark-incomplete {
-    background: var(--ac-sun);
-    color: var(--ac-ink);
+.remark-unknown {
+    background: var(--panel-2);
+    color: var(--text);
 }
 
 /* Empty states */

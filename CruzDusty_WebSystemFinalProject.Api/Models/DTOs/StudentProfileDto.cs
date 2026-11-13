@@ -6,10 +6,7 @@ public class StudentProfileDto
 
     public string StudentNumber { get; set; } = string.Empty;
 
-    // "Juan S. Dela Cruz"
     public string FullName { get; set; } = string.Empty;
 
-    public string Course { get; set; } = string.Empty;
-
-    public int YearLevel { get; set; }
+    public string Email { get; set; } = string.Empty;
 }

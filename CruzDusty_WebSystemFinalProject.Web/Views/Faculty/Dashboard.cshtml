@@ -8,7 +8,7 @@
     <div>
         <h1 class="page-title">Faculty Dashboard</h1>
         <p class="page-sub">
-            Welcome back, <span data-user-name>Faculty</span>. Here is the current state of your class records.
+            Welcome back, <span data-user-name>Faculty</span>. Here is a summary of the posted grades.
         </p>
     </div>
     <div class="page-head-actions">
@@ -21,26 +21,6 @@
 <section class="row g-3 mb-4" aria-label="Summary">
     <div class="col-12 col-sm-6 col-xl-3">
         <div class="stat-card stagger-item" style="--i:0">
-            <div class="stat-icon stat-icon-blue" aria-hidden="true"><i class="bi bi-people-fill"></i></div>
-            <div class="stat-body">
-                <div class="stat-label">Total Students</div>
-                <div class="stat-value" id="stat-students"><span class="skeleton skeleton-text"></span></div>
-                <div class="stat-hint">Enrolled in the system</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-3">
-        <div class="stat-card stagger-item" style="--i:1">
-            <div class="stat-icon stat-icon-gold" aria-hidden="true"><i class="bi bi-book-half"></i></div>
-            <div class="stat-body">
-                <div class="stat-label">Subjects</div>
-                <div class="stat-value" id="stat-subjects"><span class="skeleton skeleton-text"></span></div>
-                <div class="stat-hint">Offered subjects</div>
-            </div>
-        </div>
-    </div>
-    <div class="col-12 col-sm-6 col-xl-3">
-        <div class="stat-card stagger-item" style="--i:2">
             <div class="stat-icon stat-icon-ink" aria-hidden="true"><i class="bi bi-journal-check"></i></div>
             <div class="stat-body">
                 <div class="stat-label">Grade Records</div>
@@ -50,12 +30,32 @@
         </div>
     </div>
     <div class="col-12 col-sm-6 col-xl-3">
-        <div class="stat-card stagger-item" style="--i:3">
+        <div class="stat-card stagger-item" style="--i:1">
+            <div class="stat-icon stat-icon-blue" aria-hidden="true"><i class="bi bi-people-fill"></i></div>
+            <div class="stat-body">
+                <div class="stat-label">Active Students</div>
+                <div class="stat-value" id="stat-students"><span class="skeleton skeleton-text"></span></div>
+                <div class="stat-hint">Students who can be graded</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="stat-card stagger-item" style="--i:2">
             <div class="stat-icon stat-icon-success" aria-hidden="true"><i class="bi bi-graph-up-arrow"></i></div>
             <div class="stat-body">
                 <div class="stat-label">Passing Rate</div>
                 <div class="stat-value" id="stat-passing"><span class="skeleton skeleton-text"></span></div>
-                <div class="stat-hint" id="stat-passing-hint">Of completed records</div>
+                <div class="stat-hint" id="stat-passing-hint">Grades of 75 and above</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-12 col-sm-6 col-xl-3">
+        <div class="stat-card stagger-item" style="--i:3">
+            <div class="stat-icon stat-icon-gold" aria-hidden="true"><i class="bi bi-award-fill"></i></div>
+            <div class="stat-body">
+                <div class="stat-label">Average Grade</div>
+                <div class="stat-value" id="stat-average"><span class="skeleton skeleton-text"></span></div>
+                <div class="stat-hint">Of all posted grades</div>
             </div>
         </div>
     </div>
@@ -65,20 +65,20 @@
     <div class="col-12 col-lg-7">
         <section class="panel h-100" aria-labelledby="chart-title">
             <div class="panel-head">
-                <h2 class="panel-title" id="chart-title">Remarks Overview</h2>
-                <span class="panel-note">All grade records</span>
+                <h2 class="panel-title" id="chart-title">Remarks Distribution</h2>
+                <span class="panel-note">Computed by the server</span>
             </div>
             <div class="panel-body">
                 <div class="chart-wrap" id="chart-wrap">
-                    <canvas id="remarks-chart" role="img" aria-label="Chart of Passed, Failed and Incomplete grade records"></canvas>
+                    <canvas id="remarks-chart" role="img" aria-label="Number of grade records for each remark"></canvas>
                 </div>
                 <ul class="chart-legend" id="chart-legend" aria-label="Remarks counts"></ul>
                 <div class="empty-state" id="chart-empty" hidden>
                     <img src="~/images/logo.png" alt="" class="empty-logo" width="72" height="72" />
-                    <p class="empty-title">No grade records yet</p>
-                    <p class="empty-text">Add the first grade record to see the chart.</p>
+                    <p class="empty-title">No grades posted yet</p>
+                    <p class="empty-text">Post the first grade to see the distribution.</p>
                     <a class="btn btn-primary btn-sm" href="/Faculty/Grades">
-                        <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Add a grade record
+                        <i class="bi bi-plus-lg me-1" aria-hidden="true"></i>Add a grade
                     </a>
                 </div>
             </div>
@@ -88,7 +88,7 @@
     <div class="col-12 col-lg-5">
         <section class="panel h-100" aria-labelledby="recent-title">
             <div class="panel-head">
-                <h2 class="panel-title" id="recent-title">Recent Grade Records</h2>
+                <h2 class="panel-title" id="recent-title">Recently Posted</h2>
                 <a class="panel-link" href="/Faculty/Grades">View all</a>
             </div>
             <div class="panel-body">
