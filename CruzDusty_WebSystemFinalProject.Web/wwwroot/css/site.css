@@ -528,21 +528,29 @@ h1, h2, h3 {
 .sidebar-brand-text {
     display: flex;
     flex-direction: column;
+    gap: .15rem;
     min-width: 0;
-    overflow: hidden;
-    white-space: nowrap;
 }
 
 .sidebar-brand-title {
     font-family: var(--font-heading);
-    font-size: .95rem;
+    font-size: .88rem;
     font-weight: 700;
+    line-height: 1.2;
     color: var(--ac-white);
 }
 
 .sidebar-brand-sub {
-    font-size: .66rem;
+    font-size: .68rem;
+    line-height: 1.25;
     color: var(--ac-gold-light);
+}
+
+/* Keep the brand text on one line while the desktop sidebar collapses to icons. */
+@media (min-width: 992px) {
+    .sidebar-collapsed .sidebar-brand-text {
+        white-space: nowrap;
+    }
 }
 
 .sidebar-nav {
@@ -1240,6 +1248,18 @@ th[aria-sort="descending"] .sort-icon {
 
 /* Remarks pills */
 /* Required grading scale: CMS, SP, SAP, GP, EP, BEP/FAILED */
+
+.remark-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: .35rem;
+    padding: .25rem .7rem;
+    border-radius: 999px;
+    font-size: .78rem;
+    font-weight: 700;
+    line-height: 1.2;
+    white-space: nowrap;
+}
 .remark-cms {
     background: var(--ac-gold-gradient);
     color: var(--ac-ink);
