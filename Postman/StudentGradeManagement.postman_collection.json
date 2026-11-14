@@ -561,9 +561,9 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
-                  "const data = pm.response.json();",
-                  "pm.test('Profile is the signed-in student', () => pm.expect(data.student.studentNumber).to.eql('2026-0001'));",
-                  "pm.test('Every grade belongs to the signed-in student', () => data.grades.forEach(g => pm.expect(g.studentNumber).to.eql('2026-0001')));"
+                  "const result = pm.response.json();",
+                  "pm.test('Profile is the signed-in student', () => pm.expect(result.student.studentNumber).to.eql('2026-0001'));",
+                  "pm.test('Every grade belongs to the signed-in student', () => result.grades.forEach(g => pm.expect(g.studentNumber).to.eql('2026-0001')));"
                 ]
               }
             }
@@ -585,9 +585,9 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
-                  "const data = pm.response.json();",
-                  "pm.test('Query string is ignored: profile is still 2026-0001', () => pm.expect(data.student.studentNumber).to.eql('2026-0001'));",
-                  "pm.test('No grade from another student is returned', () => data.grades.forEach(g => pm.expect(g.studentNumber).to.eql('2026-0001')));"
+                  "const result = pm.response.json();",
+                  "pm.test('Query string is ignored: profile is still 2026-0001', () => pm.expect(result.student.studentNumber).to.eql('2026-0001'));",
+                  "pm.test('No grade from another student is returned', () => result.grades.forEach(g => pm.expect(g.studentNumber).to.eql('2026-0001')));"
                 ]
               }
             }
