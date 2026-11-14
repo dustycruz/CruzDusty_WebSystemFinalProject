@@ -1,0 +1,883 @@
+{
+  "info": {
+    "name": "Student Grade Management System",
+    "description": "Required tests for the practical examination. Run the folders in order. Turn off SSL certificate verification in Postman settings because the API uses the local development certificate.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "https://localhost:7001" },
+    { "key": "facultyToken", "value": "" },
+    { "key": "studentToken", "value": "" },
+    { "key": "pedroStudentId", "value": "" },
+    { "key": "otherStudentId", "value": "" },
+    { "key": "otherStudentGradeId", "value": "" },
+    { "key": "createdGradeId", "value": "" },
+    { "key": "tamperGradeId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "1. Sign in",
+      "item": [
+        {
+          "name": "1.1 Faculty login (faculty1)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Role is Faculty', () => pm.expect(body.role).to.eql('Faculty'));",
+                  "pm.test('Token is returned', () => pm.expect(body.token).to.be.a('string').and.not.empty);",
+                  "pm.collectionVariables.set('facultyToken', body.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"faculty1\",\n  \"password\": \"Faculty@123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "1.2 Student login (student1)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Role is Student', () => pm.expect(body.role).to.eql('Student'));",
+                  "pm.test('Linked to a student record', () => pm.expect(body.studentId).to.be.a('number'));",
+                  "pm.collectionVariables.set('studentToken', body.token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"student1\",\n  \"password\": \"Student@123\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        },
+        {
+          "name": "1.3 Login with a wrong password (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('No token is returned', () => pm.expect(pm.response.json().token).to.be.undefined);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"student1\",\n  \"password\": \"WrongPassword1!\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/auth/login"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Setup",
+      "item": [
+        {
+          "name": "2.1 Faculty GET students (saves ids)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "const students = pm.response.json();",
+                  "const pedro = students.find(s => s.studentNumber === '2026-0003');",
+                  "const maria = students.find(s => s.studentNumber === '2026-0002');",
+                  "pm.test('Seed students 2026-0002 and 2026-0003 exist', () => { pm.expect(pedro).to.be.an('object'); pm.expect(maria).to.be.an('object'); });",
+                  "if (pedro) { pm.collectionVariables.set('pedroStudentId', pedro.studentId); }",
+                  "if (maria) { pm.collectionVariables.set('otherStudentId', maria.studentId); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{facultyToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/students"
+          }
+        },
+        {
+          "name": "2.2 Remove leftovers from a previous run",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "const leftovers = pm.response.json().filter(g => ['IT201', 'IT202'].includes(g.subjectCode) && g.semester === '1st Semester' && g.schoolYear === '2026-2027');",
+                  "leftovers.forEach(g => {",
+                  "  pm.sendRequest({",
+                  "    url: pm.collectionVariables.get('baseUrl') + '/api/grades/' + g.gradeId,",
+                  "    method: 'DELETE',",
+                  "    header: [{ key: 'Authorization', value: 'Bearer ' + pm.collectionVariables.get('facultyToken') }]",
+                  "  }, (err, res) => pm.test('Removed leftover grade ' + g.gradeId, () => pm.expect(res.code).to.eql(204)));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{facultyToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/grades?studentId={{pedroStudentId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Faculty grade management",
+      "item": [
+        {
+          "name": "3.1 Faculty GET all grades (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "const grades = pm.response.json();",
+                  "pm.test('Returns an array of grade records', () => pm.expect(grades).to.be.an('array').and.not.empty);",
+                  "pm.test('Each record has student, subject, grade, remarks, semester and school year', () => {",
+                  "  grades.forEach(g => pm.expect(g).to.include.keys('studentNumber', 'studentName', 'subjectCode', 'subjectName', 'grade', 'remarks', 'semester', 'schoolYear'));",
+                  "});",
+                  "const other = grades.find(g => g.studentNumber === '2026-0002');",
+                  "if (other) { pm.collectionVariables.set('otherStudentGradeId', other.gradeId); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{facultyToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/grades"
+          }
+        },
+        {
+          "name": "3.2 Faculty POST a valid grade (201, CMS)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('Remark computed by the server is CMS', () => pm.expect(body.remarks).to.eql('CMS'));",
+                  "pm.test('FacultyId comes from the signed-in faculty', () => pm.expect(body.facultyName).to.eql('Andrea Garcia'));",
+                  "pm.test('Location header points to the new record', () => pm.expect(pm.response.headers.get('Location')).to.include('/api/grades/' + body.gradeId));",
+                  "pm.collectionVariables.set('createdGradeId', body.gradeId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{facultyToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": {{pedroStudentId}},\n  \"subjectCode\": \"IT201\",\n  \"subjectName\": \"Data Structures and Algorithms\",\n  \"grade\": 96,\n  \"semester\": \"1st Semester\",\n  \"schoolYear\": \"2026-2027\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/grades"
+          }
+        },
+        {
+          "name": "3.3 Faculty GET one grade (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Returns the created record', () => pm.expect(body.gradeId).to.eql(Number(pm.collectionVariables.get('createdGradeId'))));",
+                  "pm.test('Grade and remark are stored', () => { pm.expect(body.grade).to.eql(96); pm.expect(body.remarks).to.eql('CMS'); });"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{facultyToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/grades/{{createdGradeId}}"
+          }
+        },
+        {
+          "name": "3.4 Faculty PUT changes the grade (remark becomes BEP/FAILED)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Grade updated to 74', () => pm.expect(body.grade).to.eql(74));",
+                  "pm.test('Remark recomputed from CMS to BEP/FAILED', () => pm.expect(body.remarks).to.eql('BEP/FAILED'));",
+                  "pm.test('DateModified is set', () => pm.expect(body.dateModified).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{facultyToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": {{pedroStudentId}},\n  \"subjectCode\": \"IT201\",\n  \"subjectName\": \"Data Structures and Algorithms\",\n  \"grade\": 74,\n  \"semester\": \"1st Semester\",\n  \"schoolYear\": \"2026-2027\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/grades/{{createdGradeId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Validation",
+      "item": [
+        {
+          "name": "4.1 Grade 105 is rejected (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Message explains the rule', () => pm.expect(pm.response.json().message).to.include('0 to 100'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{facultyToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": {{pedroStudentId}},\n  \"subjectCode\": \"IT299\",\n  \"subjectName\": \"Validation Test\",\n  \"grade\": 105,\n  \"semester\": \"1st Semester\",\n  \"schoolYear\": \"2026-2027\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/grades"
+          }
+        },
+        {
+          "name": "4.2 Grade -1 is rejected (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Message explains the rule', () => pm.expect(pm.response.json().message).to.include('0 to 100'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{facultyToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": {{pedroStudentId}},\n  \"subjectCode\": \"IT299\",\n  \"subjectName\": \"Validation Test\",\n  \"grade\": -1,\n  \"semester\": \"1st Semester\",\n  \"schoolYear\": \"2026-2027\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/grades"
+          }
+        },
+        {
+          "name": "4.3 Non-integer grade 85.5 is rejected (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Message says a whole number is required', () => pm.expect(pm.response.json().message).to.include('whole number'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{facultyToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": {{pedroStudentId}},\n  \"subjectCode\": \"IT299\",\n  \"subjectName\": \"Validation Test\",\n  \"grade\": 85.5,\n  \"semester\": \"1st Semester\",\n  \"schoolYear\": \"2026-2027\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/grades"
+          }
+        },
+        {
+          "name": "4.4 Missing grade is rejected (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Message says the grade is required', () => pm.expect(pm.response.json().message).to.eql('Grade is required.'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{facultyToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": {{pedroStudentId}},\n  \"subjectCode\": \"IT299\",\n  \"subjectName\": \"Validation Test\",\n  \"semester\": \"1st Semester\",\n  \"schoolYear\": \"2026-2027\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/grades"
+          }
+        },
+        {
+          "name": "4.5 Text grade is rejected (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400 Bad Request', () => pm.response.to.have.status(400));",
+                  "pm.test('Message says a whole number is required', () => pm.expect(pm.response.json().message).to.include('whole number'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{facultyToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": {{pedroStudentId}},\n  \"subjectCode\": \"IT299\",\n  \"subjectName\": \"Validation Test\",\n  \"grade\": \"eighty\",\n  \"semester\": \"1st Semester\",\n  \"schoolYear\": \"2026-2027\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/grades"
+          }
+        },
+        {
+          "name": "4.6 Duplicate student + subject + term is rejected (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 409 Conflict', () => pm.response.to.have.status(409));",
+                  "pm.test('Message explains the duplicate', () => pm.expect(pm.response.json().message).to.include('already exists'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{facultyToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": {{pedroStudentId}},\n  \"subjectCode\": \"IT201\",\n  \"subjectName\": \"Data Structures and Algorithms\",\n  \"grade\": 88,\n  \"semester\": \"1st Semester\",\n  \"schoolYear\": \"2026-2027\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/grades"
+          }
+        },
+        {
+          "name": "4.7 Grade that does not exist (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404 Not Found', () => pm.response.to.have.status(404));",
+                  "pm.test('Error body has message and statusCode', () => pm.expect(pm.response.json().statusCode).to.eql(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{facultyToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/grades/999999"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Client-data tampering",
+      "item": [
+        {
+          "name": "5.1 POST grade 60 with a false remark CMS (server saves BEP/FAILED)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201 Created', () => pm.response.to.have.status(201));",
+                  "const body = pm.response.json();",
+                  "pm.test('Client remark CMS was ignored', () => pm.expect(body.remarks).to.not.eql('CMS'));",
+                  "pm.test('Server computed BEP/FAILED for 60', () => pm.expect(body.remarks).to.eql('BEP/FAILED'));",
+                  "pm.collectionVariables.set('tamperGradeId', body.gradeId);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{facultyToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": {{pedroStudentId}},\n  \"subjectCode\": \"IT202\",\n  \"subjectName\": \"Information Management\",\n  \"grade\": 60,\n  \"remarks\": \"CMS\",\n  \"semester\": \"1st Semester\",\n  \"schoolYear\": \"2026-2027\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/grades"
+          }
+        },
+        {
+          "name": "5.2 PUT grade 91 with a false remark BEP/FAILED (server saves SP)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Client remark BEP/FAILED was ignored', () => pm.expect(body.remarks).to.not.eql('BEP/FAILED'));",
+                  "pm.test('Server computed SP for 91', () => pm.expect(body.remarks).to.eql('SP'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{facultyToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": {{pedroStudentId}},\n  \"subjectCode\": \"IT202\",\n  \"subjectName\": \"Information Management\",\n  \"grade\": 91,\n  \"remarks\": \"BEP/FAILED\",\n  \"semester\": \"1st Semester\",\n  \"schoolYear\": \"2026-2027\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/grades/{{tamperGradeId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Student access and ownership",
+      "item": [
+        {
+          "name": "6.1 Student GET own grades (200)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json();",
+                  "pm.test('Profile is the signed-in student', () => pm.expect(data.student.studentNumber).to.eql('2026-0001'));",
+                  "pm.test('Every grade belongs to the signed-in student', () => data.grades.forEach(g => pm.expect(g.studentNumber).to.eql('2026-0001')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{studentToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/student/grades"
+          }
+        },
+        {
+          "name": "6.2 Student adds ?studentId= of another student (still own data only)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', () => pm.response.to.have.status(200));",
+                  "const data = pm.response.json();",
+                  "pm.test('Query string is ignored: profile is still 2026-0001', () => pm.expect(data.student.studentNumber).to.eql('2026-0001'));",
+                  "pm.test('No grade from another student is returned', () => data.grades.forEach(g => pm.expect(g.studentNumber).to.eql('2026-0001')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{studentToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/student/grades?studentId={{otherStudentId}}"
+          }
+        },
+        {
+          "name": "6.3 Student GET another student's grade by id (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404 Not Found (record is concealed)', () => pm.response.to.have.status(404));",
+                  "pm.test('No grade data is returned', () => pm.expect(pm.response.json().grade).to.be.undefined);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{studentToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/grades/{{otherStudentGradeId}}"
+          }
+        },
+        {
+          "name": "6.4 Student GET the faculty grade list with ?studentId= (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403 Forbidden', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{studentToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/grades?studentId={{otherStudentId}}"
+          }
+        },
+        {
+          "name": "6.5 Student POST a grade (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403 Forbidden', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{studentToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": 1,\n  \"subjectCode\": \"IT299\",\n  \"subjectName\": \"Student Write Test\",\n  \"grade\": 100,\n  \"semester\": \"1st Semester\",\n  \"schoolYear\": \"2026-2027\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/grades"
+          }
+        },
+        {
+          "name": "6.6 Student PUT a grade (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403 Forbidden', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" },
+              { "key": "Authorization", "value": "Bearer {{studentToken}}" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": {{pedroStudentId}},\n  \"subjectCode\": \"IT201\",\n  \"subjectName\": \"Data Structures and Algorithms\",\n  \"grade\": 100,\n  \"semester\": \"1st Semester\",\n  \"schoolYear\": \"2026-2027\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/grades/{{createdGradeId}}"
+          }
+        },
+        {
+          "name": "6.7 Student DELETE a grade (403)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 403 Forbidden', () => pm.response.to.have.status(403));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{studentToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/grades/{{createdGradeId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Faculty DELETE",
+      "item": [
+        {
+          "name": "7.1 Faculty DELETE the created grade (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 204 No Content', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{facultyToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/grades/{{createdGradeId}}"
+          }
+        },
+        {
+          "name": "7.2 Deleted grade is gone (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404 Not Found', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{facultyToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/grades/{{createdGradeId}}"
+          }
+        },
+        {
+          "name": "7.3 Faculty DELETE the tampering test grade (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 204 No Content', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{facultyToken}}" }
+            ],
+            "url": "{{baseUrl}}/api/grades/{{tamperGradeId}}"
+          }
+        }
+      ]
+    },
+    {
+      "name": "8. Authentication",
+      "item": [
+        {
+          "name": "8.1 GET grades without a token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401 Unauthorized', () => pm.response.to.have.status(401));",
+                  "pm.test('Error body has message and statusCode', () => pm.expect(pm.response.json().statusCode).to.eql(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/grades"
+          }
+        },
+        {
+          "name": "8.2 GET student grades without a token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401 Unauthorized', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{baseUrl}}/api/student/grades"
+          }
+        },
+        {
+          "name": "8.3 POST a grade without a token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401 Unauthorized', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"studentId\": 1,\n  \"subjectCode\": \"IT299\",\n  \"subjectName\": \"Anonymous Test\",\n  \"grade\": 90,\n  \"semester\": \"1st Semester\",\n  \"schoolYear\": \"2026-2027\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "url": "{{baseUrl}}/api/grades"
+          }
+        },
+        {
+          "name": "8.4 GET grades with a fake token (401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 401 Unauthorized', () => pm.response.to.have.status(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer not-a-real-token" }
+            ],
+            "url": "{{baseUrl}}/api/grades"
+          }
+        }
+      ]
+    }
+  ]
+}
